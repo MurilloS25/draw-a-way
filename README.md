@@ -4,7 +4,13 @@ Read-only AI assistant for understanding public GitHub repositories and turning 
 
 ## Status
 
-Planning and technical validation.
+Development harness ready; implementation has not started.
+
+## Start here
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development harness](docs/HARNESS.md)
+- [Agent guide](AGENTS.md)
 
 ## Proposed MVP
 
