@@ -1,6 +1,8 @@
-# RepoPilot AI
+# MatchLens
 
-Read-only AI assistant for understanding public GitHub repositories and turning repository context into useful engineering guidance.
+Evidence-backed football match analysis built as a focused learning and portfolio project.
+
+MatchLens turns a small, curated set of historical matches into understandable visual evidence and bounded AI explanations. It is intentionally not a live-score service, betting product, professional scouting platform, or attempt to cover all of world football.
 
 ## Status
 
@@ -12,37 +14,62 @@ Development harness ready; implementation has not started.
 - [Development harness](docs/HARNESS.md)
 - [Agent guide](AGENTS.md)
 
+## Why this project exists
+
+The goal is to learn and demonstrate the engineering behind trustworthy sports analytics:
+
+- ingesting and validating real event data;
+- modelling historical matches in a relational database;
+- calculating reproducible metrics with transparent formulas;
+- building useful football visualisations;
+- letting an AI analyst explain only evidence the application can verify;
+- evaluating factual accuracy, unsupported claims, latency, and cost.
+
+The first release will be deliberately small enough to finish and explain well. Product breadth is secondary to data quality, traceability, and engineering depth.
+
 ## Proposed MVP
 
-- Analyze a user-selected public GitHub repository.
-- Produce a navigable architecture and dependency overview.
-- Answer repository-grounded questions with file references.
-- Suggest implementation plans and candidate files for a requested change.
-- Clearly separate retrieved evidence from model-generated recommendations.
+- Import one curated historical dataset, initially targeting roughly 10–20 matches.
+- Browse teams, matches, scorelines, lineups, and key events.
+- Present three core views: a shot map, an xG timeline, and a team/event comparison.
+- Support a small set of predefined analytical questions through an AI analyst.
+- Ground every numerical or factual answer in deterministic calculations and match evidence.
+- Make formulas, data coverage, omissions, and limitations visible.
+- Produce a shareable match summary without inventing statistics.
+
+## Explicitly out of scope
+
+- Live scores or real-time match tracking.
+- Betting, gambling advice, or outcome prediction.
+- Exhaustive league and season coverage.
+- Paid data feeds.
+- User accounts, social features, and collaboration in the first release.
+- Unlicensed club crests, player photographs, or broadcast footage.
+- Claims that the product replaces a professional analyst or scout.
 
 ## Proposed stack
 
 - Next.js, React, TypeScript, and Tailwind CSS
-- GitHub API
-- Python and FastAPI
-- LangGraph / LangChain
-- An LLM and embeddings provider selected after technical validation
-- Vercel for the web experience
+- Accessible SVG or a lightweight charting layer for pitch and timeline views
+- Python and FastAPI for ingestion, analytics, and model orchestration
+- PostgreSQL for normalized match, lineup, event, and derived-metric data
+- An LLM provider selected only after the deterministic analytics slice works
+- Version-controlled fixtures and evaluation cases
 
-## Data approach
+Final provider, library, and hosting choices require technical validation before implementation.
 
-The first version will process repository context per session and avoid unnecessary persistent storage. A vector database will only be introduced if evaluation shows that it materially improves retrieval quality or scale.
+## Data and attribution
 
-## What this project is meant to demonstrate
+The proposed primary source is [StatsBomb Open Data](https://github.com/hudl/open-data), which makes selected historical football data available for research and genuine interest in football analytics.
 
-Code intelligence, retrieval-augmented generation, evidence-backed answers, API integration, agent workflows, and secure read-only design.
+StatsBomb requires published analysis based on its open data to identify StatsBomb as the data source and use its logo. MatchLens will preserve that attribution in the product and documentation. Attribution is credit, not a payment. The exact dataset and distribution approach must be reviewed against the current source terms before data is committed or deployed.
 
 ## Initial roadmap
 
-1. Validate GitHub API limits and repository ingestion options.
-2. Define supported repository sizes and languages.
-3. Build deterministic repository parsing and code maps.
-4. Add grounded question answering and change planning.
-5. Evaluate answer quality, latency, and cost before deployment.
-
+1. Select one legally usable open dataset and freeze the initial scope.
+2. Define source provenance, normalized schemas, and metric formulas.
+3. Build an idempotent importer with validation and small test fixtures.
+4. Deliver one match page with deterministic visualisations.
+5. Add a narrowly scoped, evidence-backed AI analyst.
+6. Evaluate correctness and usability before expanding coverage.
 
