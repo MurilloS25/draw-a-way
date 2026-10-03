@@ -13,7 +13,7 @@ Included and explicitly excluded work.
 Ordered implementation slices and affected boundaries.
 
 ## Verification
-Commands, repository fixtures, expected evidence, and failure cases.
+Commands, dataset fixtures, expected calculations and evidence, numerical tolerances, and failure cases.
 
 ## Decisions or follow-ups
 Durable decisions to record and intentionally deferred work.
