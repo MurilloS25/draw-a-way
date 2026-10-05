@@ -322,6 +322,7 @@ export function Game() {
                 Your story trail
               </h2>
               <p className="story">{mission.goal} You tried it, changed it, and saw what happened.</p>
+              {ending && <p className="goal">{ending.text}</p>}
             </>
           )}
         </section>

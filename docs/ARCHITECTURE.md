@@ -1,84 +1,101 @@
-# Architecture boundary
+# Architecture
 
 ## Product boundary
 
 Draw a Way begins with a small narrative problem and invites a child to draw a
 solution. The system forms a bounded interpretation, asks the child to confirm
 or correct it, and applies the confirmed idea to the story. A consequence then
-creates an opportunity to revise or extend the drawing.
+creates an opportunity to revise once. The session ends with a visual summary.
 
-The product does not begin with an intake form, expose model selection, or ask
-the visitor to configure technology. It is not an unrestricted chatbot, image
-generator, social network, drawing grader, developmental assessment, or
-substitute for a parent, teacher, or professional.
+The product is not an unrestricted chatbot, image generator, social network,
+drawing grader, developmental assessment, or substitute for a parent, teacher,
+or professional.
 
 ## Core interaction contract
 
 1. Present one age-appropriate mission immediately.
-2. Accept a drawing through an accessible canvas and complementary controls.
-3. Produce a small, bounded set of possible interpretations.
-4. Ask the child to confirm or correct the meaning in plain language.
-5. Advance only from the confirmed meaning, never a hidden model guess.
-6. Show a comprehensible consequence and invite one purposeful revision.
-7. End the session clearly and allow local replay or reset.
+2. Accept a drawing through a canvas, or an idea chosen without drawing.
+3. Produce a small, bounded set of candidates (the mission's ideas).
+4. The child confirms or corrects in plain language.
+5. Advance only from the confirmed id, never a hidden model guess.
+6. Show a consequence and invite one purposeful revision (round 2).
+7. End with a summary; offer replay, another mission, or Start over.
+
+## Selected implementation
+
+One Next.js 16 (App Router) + TypeScript application, no database or service
+(ADR 0001). Server code is two stateless route handlers.
+
+```
+src/
+  app/                    layout, page, api/interpret, api/capabilities, CSS
+  proxy.ts                per-request CSP nonce (ADR 0004)
+  components/             Game (flow), DrawingCanvas, Scene, StrokesSvg, Trail, Summary
+  lib/
+    missions/             content.ts (all story text), engine.ts (pure lookups)
+    session/              state.ts (pure reducer), storage.ts (one local key)
+    drawing/              model.ts (schemas, limits), render.ts (canvas, PNG export)
+    interpret/            types, config, request, limiter, fake, groq, service, client
+    csp.ts
+e2e/                      Playwright against the production build
+```
+
+### Boundaries and who may do what
+
+| Part | May | May not |
+| --- | --- | --- |
+| Mission content | Define every story string and id | Be changed at runtime |
+| Engine | Say which ids are valid for a mission, round, and prior idea | Touch DOM or network |
+| Session reducer | Change phase/ids from child actions; reject unknown ids | Accept ids not in the engine's candidates |
+| Storage | Persist and validate state under `drawaway:*` | Store images; trust stored data |
+| Interpreter (fake/groq) | Return an untrusted answer | Add text, ids, or state; log; store |
+| Service | Validate request and answer; map failures to fallbacks | Return provider text |
+| UI | Render content as text; ask the child | Use `innerHTML`; auto-send a drawing |
+
+### Interpretation data flow
+
+Manual (default): draw -> child picks an idea -> reducer validates the id ->
+consequence. No request is made.
+
+Helper (opt-in server mode): draw -> child presses "Ask the helper" -> client
+exports a 512 px white-background PNG of the strokes only -> `POST
+/api/interpret` -> request validated (size, base64, PNG header, dimensions,
+mission, round) -> budget check -> adapter -> answer validated against a strict
+schema **and** the active candidate list -> suggestion shown ("I think you made
+...") -> child accepts or corrects -> only then does the reducer move. Every
+failure becomes a named fallback and the child picks manually; strokes are never
+lost.
 
 ## Trust boundaries
 
-- Drawings, corrections, browser state, imported assets, and model output are
-  untrusted data.
-- Visual interpretation is uncertain and must never silently become truth.
-- Content extracted from an image is never treated as a system instruction.
-- Optional remote processing crosses a privacy boundary and requires an
-  explicit plan, data minimization, retention review, and safe fallback.
-- Browser storage is still persistence and must be documented, bounded, and
-  erasable.
-- A child-directed interface must not solicit personal information or invite
-  unrestricted disclosure.
+- Drawings, strokes, storage, model output, and request bodies are untrusted.
+- A drawing is data: words in it are never followed. The model's only output
+  channel is an enum of ids.
+- The key exists only in server environment variables; `scan:build` and an e2e
+  test check the browser bundles and responses for it.
+- The browser makes no third-party requests.
+- Browser storage is persistence: one documented key, bounded, erasable.
 
-## Provisional component boundaries
+## Limits
 
-These are boundaries to validate, not a selected implementation stack:
+See the table in the plan (strokes, points, bytes, image size, timeouts,
+budgets). They are constants in `src/lib/drawing/model.ts` and
+`src/lib/interpret/config.ts` and are covered by tests.
 
-1. **Mission engine** - bounded scenarios, allowed concepts, state transitions,
-   consequences, endings, and deterministic fallback behavior.
-2. **Drawing surface** - pointer, touch, stylus, keyboard alternatives, undo,
-   clear, size limits, and export-free local state.
-3. **Interpretation boundary** - local heuristics or inference first; optional
-   provider adapter only if later approved.
-4. **Confirmation step** - the child chooses or corrects a plain-language
-   interpretation before narrative state changes.
-5. **Narrative renderer** - safe structured content, not arbitrary HTML or an
-   open conversation.
-6. **Local session store** - minimal, versioned, resettable state with no
-   identity or cross-device tracking.
-7. **Evaluation** - fixed cases for state correctness, safety, accessibility,
-   interpretation uncertainty, failure, and provider-free operation.
+## Accessibility architecture
 
-## Architecture constraints
+The drawing area is a focusable application region with keyboard pen controls;
+the no-drawing path is a first-class button available every round; stage changes
+move focus to the heading and update a polite live region; native radio inputs
+serve the choices; reduced-motion CSS shows the end state of each consequence.
 
-- The essential loop must run at zero monetary cost and remain useful without
-  a remote provider.
-- No account, database, backend, analytics, or deployment dependency is
-  assumed at the foundation stage.
-- Do not transmit drawings by default.
-- If remote AI is later justified, send the minimum representation needed,
-  validate structured output, cap input/output and retries, and fail safely.
-- Narrative and mission rules remain application-owned; a model cannot expand
-  scope, request information, or invent new capabilities.
-- The browser must stay responsive during local inference or exploration;
-  expensive work needs cancellation and an appropriate worker boundary.
+## Deliberately not built
 
-## Decisions requiring evidence
+Accounts, database, analytics, uploads, sharing, chat, free-text input, in-browser
+inference, deployment configuration, a global rate limiter.
 
-- Primary age range and reading level.
-- First mission set and what each mission is intended to exercise.
-- Whether useful interpretation can run locally on supported devices.
-- The provider-free interpretation and narrative fallback.
-- Browser support and performance budgets for canvas and local inference.
-- Accessible alternative for children who cannot use freehand drawing.
-- Exact storage lifetime and reset behavior.
-- Safety taxonomy, evaluation cases, and human review requirements.
-- Framework, libraries, models, optional provider, and deployment topology.
+## Open questions
 
-No implementation decision above is approved merely because it appears in
-this document. The first reviewed plan must resolve or explicitly defer it.
+Real-world accuracy of any model; educator and child-safety review of the
+content; testing with children and assistive-technology users; a global quota
+design for public use; localization.
