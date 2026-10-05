@@ -12,6 +12,7 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
+      "jsx-a11y/label-has-associated-control": ["error", { assert: "either", depth: 4 }],
       "react-hooks/exhaustive-deps": "warn",
       "no-restricted-syntax": [
         "error",
