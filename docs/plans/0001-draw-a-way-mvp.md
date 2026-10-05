@@ -1,6 +1,6 @@
 # Plan 0001: Draw a Way MVP
 
-Status: in progress (updated as phases complete; see "Progress").
+Status: implemented; awaiting manual acceptance and PR review.
 
 ## Outcome
 
@@ -97,7 +97,7 @@ battery/CPU cost on ordinary devices for unmeasured benefit.
 | Interpret image | PNG, <= 768 px each side, <= 300 KB decoded |
 | Interpret request body | <= 420 KB |
 | Groq timeout / retries | 10 s / at most 1 retry, never on 429 |
-| Interpret budget (per instance) | 8 req/min per client bucket, 300/day total, fail closed |
+| Interpret budget (per instance) | 8 req/min shared, 300/day total, fail closed |
 
 ## Verification
 
@@ -134,4 +134,17 @@ Other: secret scan, `npm audit`, build output review.
 
 ## Progress
 
-Updated at the end of the work; see the PR description for final numbers.
+All phases 1-7 are complete except human acceptance. Gates:
+
+- G1 met: unit tests replace  with a throwing stub; no real provider or model was called.
+- G2 met: lint, typecheck, 81 unit/component tests (6 files), production build, 40 Chromium e2e tests (axe on every stage at 1440/390/320, 200% text, reduced motion, offline, CSP/headers, bundle secret check), secret scan (73 files), build review, and Unknown command: "audit"
+
+
+Did you mean this?
+  npm audit # Run a security audit
+To see a list of supported npm commands, run:
+  npm help (0 vulnerabilities) all passed on the final tree.
+- G3 met: three independent reviews (change, security/privacy, child UX/accessibility) found no P0. Fixed: P1 point-cap restore bug, P1 landscape touch trap, P1 focus loss, stale helper race, skipped-drawing flag, aria-disabled hints, spoofable per-client limit (now one shared bucket), retries counted against budget, fake mode ignored in production, copy honesty ("Nothing here looks at your drawing"), roving radio keys. Deferred (documented in README): cross-tab storage clearing, no restore announcement, no warning before replay discards a drawing, palm rejection, h1 on later stages, no "change mission" after starting.
+- G4: PR open, not merged; nothing deployed.
+
+Deviations from the original plan: per-client rate limiting became a single shared bucket because forwarded-for headers are client-controlled; the plan table's "per client bucket" no longer applies.
