@@ -93,6 +93,11 @@ on every stage at three widths. This is automated evidence, not a human audit.
 - Stylus pressure is not used: strokes store a fixed width chosen by the child.
 - Automated accessibility checks cannot replace testing with children and with
   assistive technology users. No human testing has been done.
+- Minor gaps found in review and not fixed: a second browser tab at the intro can
+  clear another tab's saved session; reloading resumes silently; "Play this
+  mission again" discards the drawing without a warning; a resting palm can
+  block the stylus; later stages use h2 rather than h1; changing mission after
+  starting requires Start over.
 - English only. Content has not been reviewed by an educator or child-safety
   specialist.
 - Hobby-plan hosting is for non-commercial use; check the terms before launch.
