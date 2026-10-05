@@ -15,9 +15,21 @@ export function motionFor(caps: readonly CapabilityOrUnknown[]): MotionStyle {
 
 /** Full travel of the hero (and of a friend, when the scene has one) in logical units. */
 const HERO_MOVE: Record<MissionId, [[number, number], [number, number], [number, number]]> = {
-  river: [[640, 0], [-600, 0], [290, 50]],
-  sprout: [[0, 0], [530, -70], [0, 0]],
-  fog: [[700, -150], [560, -200], [-120, 0]],
+  river: [
+    [640, 0],
+    [-560, 0],
+    [290, 50],
+  ],
+  sprout: [
+    [0, 0],
+    [530, -70],
+    [0, 0],
+  ],
+  fog: [
+    [700, -150],
+    [560, -200],
+    [-120, 0],
+  ],
 };
 const FRIEND_START: Partial<Record<MissionId, Record<number, [number, number]>>> = {
   river: { 2: [450, 520] },
@@ -108,7 +120,13 @@ function Face({ mood, x, y }: { mood: Mood; x: number; y: number }) {
       <circle cx="-9" cy="-9" r="3.6" fill="#1f2a5c" />
       <circle cx="9" cy="-9" r="3.6" fill="#1f2a5c" />
       {mood === "unsure" && <path d="M-14 -17 l9 3 M14 -17 l-9 3" stroke="#1f2a5c" strokeWidth="2.5" strokeLinecap="round" />}
-      <path d={MOUTH[mood]} fill={mood === "curious" ? "#1f2a5c" : "none"} stroke="#1f2a5c" strokeWidth="3" strokeLinecap="round" />
+      <path
+        d={MOUTH[mood]}
+        fill={mood === "curious" ? "#1f2a5c" : "none"}
+        stroke="#1f2a5c"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
     </g>
   );
 }
@@ -119,12 +137,30 @@ function Mossy({ mood, berry }: { mood: Mood; berry: boolean }) {
     <g>
       <ellipse cx="0" cy="0" rx="64" ry="15" fill="#d8b98a" />
       <circle cx="-18" cy="-38" r="38" fill="#e8a800" />
-      <path d="M-18 -38 m-4 0 a10 10 0 1 1 10 10 a20 20 0 1 1 -22 -24 a30 30 0 1 1 46 34" fill="none" stroke="#8a5a14" strokeWidth="5" strokeLinecap="round" />
+      <path
+        d="M-18 -38 m-4 0 a10 10 0 1 1 10 10 a20 20 0 1 1 -22 -24 a30 30 0 1 1 46 34"
+        fill="none"
+        stroke="#8a5a14"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
       <path d="M44 -6 q14 -6 14 -30" fill="none" stroke="#d8b98a" strokeWidth="14" strokeLinecap="round" />
-      <path d={mood === "unsure" ? "M44 -34 q-8 -22 4 -36" : "M44 -34 q-2 -22 6 -38"} fill="none" stroke="#d8b98a" strokeWidth="8" strokeLinecap="round" />
+      <path
+        d={mood === "unsure" ? "M44 -34 q-8 -22 4 -36" : "M44 -34 q-2 -22 6 -38"}
+        fill="none"
+        stroke="#d8b98a"
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
       <circle cx={mood === "unsure" ? 48 : 50} cy="-72" r="6" fill="#1f2a5c" />
       <g transform="translate(52 -26) scale(0.55)">
-        <path d={MOUTH[mood]} fill={mood === "curious" ? "#1f2a5c" : "none"} stroke="#1f2a5c" strokeWidth="4" strokeLinecap="round" />
+        <path
+          d={MOUTH[mood]}
+          fill={mood === "curious" ? "#1f2a5c" : "none"}
+          stroke="#1f2a5c"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
       </g>
       {berry && <circle cx="-30" cy="-62" r="10" fill="#b3264f" />}
     </g>
@@ -178,7 +214,12 @@ function Rue() {
   return (
     <g>
       <ellipse cx="0" cy="-20" rx="34" ry="22" fill="#8a6a4a" />
-      <path d="M-30 -30 l-8 -10 M-18 -40 l-4 -12 M-4 -44 l0 -12 M10 -42 l4 -12 M22 -34 l8 -10" stroke="#5c4330" strokeWidth="4" strokeLinecap="round" />
+      <path
+        d="M-30 -30 l-8 -10 M-18 -40 l-4 -12 M-4 -44 l0 -12 M10 -42 l4 -12 M22 -34 l8 -10"
+        stroke="#5c4330"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
       <ellipse cx="32" cy="-14" rx="12" ry="9" fill="#e6cba5" />
       <circle cx="38" cy="-17" r="2.6" fill="#1f2a5c" />
     </g>
@@ -300,7 +341,13 @@ function FogWorld({ scene }: { scene: SceneIndex }) {
       <path d="M0 450 Q260 390 520 450 T1000 430 V700 H0Z" fill="#a8cf8f" />
       {scene === 0 && (
         <>
-          <path d="M-20 620 C200 560 300 540 420 520 C520 505 560 470 650 440 S850 420 1020 430" fill="none" stroke="#efe0b0" strokeWidth="58" strokeLinecap="round" />
+          <path
+            d="M-20 620 C200 560 300 540 420 520 C520 505 560 470 650 440 S850 420 1020 430"
+            fill="none"
+            stroke="#efe0b0"
+            strokeWidth="58"
+            strokeLinecap="round"
+          />
           <path d="M420 520 C470 560 560 590 700 570" fill="none" stroke="#efe0b0" strokeWidth="40" strokeLinecap="round" />
         </>
       )}
@@ -315,7 +362,13 @@ function FogWorld({ scene }: { scene: SceneIndex }) {
       )}
       {scene === 2 && (
         <>
-          <path d="M120 690 C240 640 340 600 470 600 C620 600 720 570 840 560" fill="none" stroke="#efe0b0" strokeWidth="56" strokeLinecap="round" />
+          <path
+            d="M120 690 C240 640 340 600 470 600 C620 600 720 570 840 560"
+            fill="none"
+            stroke="#efe0b0"
+            strokeWidth="56"
+            strokeLinecap="round"
+          />
           <ellipse cx="210" cy="480" rx="70" ry="48" fill="#9a9a94" />
           <path d="M740 380 h160 v-40" fill="none" stroke="#8a5a46" strokeWidth="10" />
         </>

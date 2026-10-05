@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { LIMITS, type Stroke } from "../drawing/model";
-import { SESSION_KEY, clearAllLocalData, loadSession, parseSession, readEnvelope, saveSession, serializeSession } from "./storage";
+import {
+  SESSION_KEY,
+  clearAllLocalData,
+  loadSession,
+  parseSession,
+  readEnvelope,
+  saveSession,
+  serializeSession,
+} from "./storage";
 import { initialState, type SessionState } from "./state";
 
 const stroke = (s: 0 | 1 | 2 = 0): Stroke => ({ c: 1, w: 0, s, p: [1, 2, 30, 40] });
@@ -11,7 +19,8 @@ const W = "tab-aaaaaaaa";
 function state(over: Partial<SessionState> = {}): SessionState {
   return { ...initialState("river"), phase: "draw", strokes: [stroke()], ...over };
 }
-const env = (s: unknown, over: Record<string, unknown> = {}) => JSON.stringify({ v: 2, savedAt: NOW, writer: W, state: s, ...over });
+const env = (s: unknown, over: Record<string, unknown> = {}) =>
+  JSON.stringify({ v: 2, savedAt: NOW, writer: W, state: s, ...over });
 const done = (caps: string[] = ["floats"]) => ({ caps: caps as never, label: null, skipped: false });
 
 beforeEach(() => localStorage.clear());
@@ -22,8 +31,18 @@ describe("session persistence v2", () => {
       { phase: "draw" },
       { phase: "describe" },
       { phase: "result", decisions: [{ caps: ["floats"] as never, label: "big fish", skipped: false }] },
-      { phase: "draw", scene: 1, strokes: [stroke(0), stroke(1)], decisions: [{ caps: ["floats"], label: null, skipped: false }] },
-      { phase: "result", scene: 2, strokes: [stroke(0), stroke(1), stroke(2)], decisions: [done(), done(["unknown"]), done(["flies", "signals"])] },
+      {
+        phase: "draw",
+        scene: 1,
+        strokes: [stroke(0), stroke(1)],
+        decisions: [{ caps: ["floats"], label: null, skipped: false }],
+      },
+      {
+        phase: "result",
+        scene: 2,
+        strokes: [stroke(0), stroke(1), stroke(2)],
+        decisions: [done(), done(["unknown"]), done(["flies", "signals"])],
+      },
       { phase: "summary", scene: 2, strokes: [stroke(0), stroke(2)], decisions: [done(), done(), done()] },
     ];
     for (const c of cases) {

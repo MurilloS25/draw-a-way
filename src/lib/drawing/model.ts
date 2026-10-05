@@ -29,8 +29,16 @@ export const WIDTHS = [
 
 /** A stroke is a flat array of integers [x0, y0, x1, y1, ...] in logical units. */
 export const StrokeSchema = z.object({
-  c: z.number().int().min(0).max(PALETTE.length - 1),
-  w: z.number().int().min(0).max(WIDTHS.length - 1),
+  c: z
+    .number()
+    .int()
+    .min(0)
+    .max(PALETTE.length - 1),
+  w: z
+    .number()
+    .int()
+    .min(0)
+    .max(WIDTHS.length - 1),
   /** Scene the stroke belongs to (0-2). */
   s: z.number().int().min(0).max(2),
   /** Average stylus pressure 0-100, only when a pen reported it. */
@@ -40,10 +48,7 @@ export const StrokeSchema = z.object({
     .min(2)
     .max(LIMITS.maxPointsPerStroke * 2)
     .refine((a) => a.length % 2 === 0, "odd coordinate count")
-    .refine(
-      (a) => a.every((n, i) => n >= 0 && n <= (i % 2 === 0 ? CANVAS_W : CANVAS_H)),
-      "coordinate out of bounds",
-    ),
+    .refine((a) => a.every((n, i) => n >= 0 && n <= (i % 2 === 0 ? CANVAS_W : CANVAS_H)), "coordinate out of bounds"),
 });
 
 export type Stroke = z.infer<typeof StrokeSchema>;
@@ -51,10 +56,7 @@ export type Stroke = z.infer<typeof StrokeSchema>;
 export const StrokesSchema = z
   .array(StrokeSchema)
   .max(LIMITS.maxStrokes)
-  .refine(
-    (s) => s.reduce((n, st) => n + st.p.length / 2, 0) <= LIMITS.maxTotalPoints,
-    "too many points",
-  );
+  .refine((s) => s.reduce((n, st) => n + st.p.length / 2, 0) <= LIMITS.maxTotalPoints, "too many points");
 
 /** Stroke width in logical units; a pen with pressure thickens or thins it a little. */
 export function strokeWidthPx(stroke: Pick<Stroke, "w" | "pr">): number {

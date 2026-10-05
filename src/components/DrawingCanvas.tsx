@@ -12,7 +12,15 @@ import {
   pointsLeft,
   type Stroke,
 } from "@/lib/drawing/model";
-import { ERASER_RADIUS, emptyHistory, record, redo as redoOp, strokesAt, undo as undoOp, type History } from "@/lib/drawing/history";
+import {
+  ERASER_RADIUS,
+  emptyHistory,
+  record,
+  redo as redoOp,
+  strokesAt,
+  undo as undoOp,
+  type History,
+} from "@/lib/drawing/history";
 import { paintAll, paintStroke } from "@/lib/drawing/render";
 
 interface Props {
@@ -68,10 +76,18 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const scale = canvas.width / CANVAS_W;
     const cur = latest.current;
-    paintAll(ctx, cur.strokes.filter((s) => s.s === cur.scene && !erasing.current.has(s)), scale);
+    paintAll(
+      ctx,
+      cur.strokes.filter((s) => s.s === cur.scene && !erasing.current.has(s)),
+      scale,
+    );
     if (live.current && cur.tool === "draw") {
       const { sum, n } = livePressure.current;
-      paintStroke(ctx, { c: cur.color, w: cur.width, p: live.current, pr: n ? Math.round((sum / n) * 100) || undefined : undefined }, scale);
+      paintStroke(
+        ctx,
+        { c: cur.color, w: cur.width, p: live.current, pr: n ? Math.round((sum / n) * 100) || undefined : undefined },
+        scale,
+      );
     }
   }, []);
 
@@ -145,7 +161,10 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
     }
     const { strokes: current } = latest.current;
     const set = new Set(gone);
-    apply(current.filter((s) => !set.has(s)), record(latest.current.history, { type: "remove", strokes: gone }));
+    apply(
+      current.filter((s) => !set.has(s)),
+      record(latest.current.history, { type: "remove", strokes: gone }),
+    );
     latest.current.onAnnounce(`Erased ${gone.length} ${gone.length === 1 ? "line" : "lines"}.`);
   }, [apply, repaint]);
 
@@ -189,7 +208,8 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
           eraseAt(pt[0], pt[1]);
         } else {
           sample(ev);
-          if (ctx) paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: live.current, pr: livePr() }, scale, from);
+          if (ctx)
+            paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: live.current, pr: livePr() }, scale, from);
         }
       }
     };
@@ -213,7 +233,12 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
       } else {
         sample(e);
         const ctx = canvas.getContext("2d");
-        if (ctx) paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: [x, y, x, y], pr: livePr() }, canvas.width / CANVAS_W);
+        if (ctx)
+          paintStroke(
+            ctx,
+            { c: latest.current.color, w: latest.current.width, p: [x, y, x, y], pr: livePr() },
+            canvas.width / CANVAS_W,
+          );
       }
     };
     const move = (e: PointerEvent) => {
@@ -274,7 +299,10 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
     const removed = current.filter((x) => x.s === s);
     setConfirmClear(false);
     if (!removed.length) return;
-    apply(current.filter((x) => x.s !== s), record(latest.current.history, { type: "remove", strokes: removed }));
+    apply(
+      current.filter((x) => x.s !== s),
+      record(latest.current.history, { type: "remove", strokes: removed }),
+    );
     latest.current.onAnnounce("This scene's drawing was cleared. Undo brings it back.");
   }, [apply]);
 
@@ -340,7 +368,9 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
           if (latest.current.tool === "erase") eraseAt(x, y);
           else repaint();
           latest.current.onAnnounce(
-            latest.current.tool === "erase" ? "Eraser down. Move over a line to remove it." : "Pen down. Use the arrow keys to draw.",
+            latest.current.tool === "erase"
+              ? "Eraser down. Move over a line to remove it."
+              : "Pen down. Use the arrow keys to draw.",
           );
         }
         return;
@@ -367,7 +397,9 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
 
   const full = !canAddStroke(strokes);
   const toolText =
-    tool === "erase" ? "Eraser. It removes whole lines it touches." : `Crayon, ${PALETTE[color]?.name}, ${WIDTHS[width]?.name.toLowerCase()}.`;
+    tool === "erase"
+      ? "Eraser. It removes whole lines it touches."
+      : `Crayon, ${PALETTE[color]?.name}, ${WIDTHS[width]?.name.toLowerCase()}.`;
 
   return (
     <div className="drawing">
@@ -395,9 +427,9 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
         </div>
       </div>
       <p id="draw-help" className="help">
-        Draw with your finger, pen, or mouse. With a keyboard, click the page or tab to it, then use the arrow keys to
-        move and Space to put the pen down or lift it (Escape also lifts it). Prefer not to draw? Use the button below
-        to choose what your idea does instead.
+        Draw with your finger, pen, or mouse. With a keyboard, click the page or tab to it, then use the arrow keys to move and
+        Space to put the pen down or lift it (Escape also lifts it). Prefer not to draw? Use the button below to choose what your
+        idea does instead.
       </p>
 
       <div className="tools" role="group" aria-label="Drawing tools">
@@ -465,7 +497,12 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
           <button type="button" className="btn small" onClick={redo} disabled={history.future.length === 0 || full}>
             Redo
           </button>
-          <button type="button" className="btn small" onClick={() => setConfirmClear(true)} disabled={mine.length === 0 || confirmClear}>
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setConfirmClear(true)}
+            disabled={mine.length === 0 || confirmClear}
+          >
             Clear
           </button>
         </div>

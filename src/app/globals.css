@@ -27,8 +27,7 @@ body {
   margin: 0;
   background-color: var(--paper);
   background-image:
-    linear-gradient(var(--paper-deep) 1px, transparent 1px),
-    linear-gradient(90deg, var(--paper-deep) 1px, transparent 1px);
+    linear-gradient(var(--paper-deep) 1px, transparent 1px), linear-gradient(90deg, var(--paper-deep) 1px, transparent 1px);
   background-size: 32px 32px;
   color: var(--ink);
   font-family: var(--ui);
@@ -164,12 +163,6 @@ p {
   flex-direction: column;
   gap: 0.6rem;
   align-self: start;
-}
-
-@media (max-width: 61.99rem) {
-  .shell[data-phase="confirm"] .layout {
-    grid-template-areas: "note" "actions" "paper";
-  }
 }
 
 @media (min-width: 62rem) {
@@ -454,14 +447,18 @@ p {
   background: var(--swatch);
 }
 .swatch[aria-checked="true"] {
-  box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink);
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 6px var(--ink);
 }
 .swatch[aria-checked="true"]::after {
   content: "\2713";
   color: #fff;
   font-weight: 700;
   font-size: 1.3rem;
-  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  text-shadow:
+    0 0 3px #000,
+    0 0 3px #000;
 }
 .size {
   background: var(--sheet);
@@ -473,7 +470,9 @@ p {
 }
 .size[aria-checked="true"] {
   background: var(--marigold);
-  box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink);
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 6px var(--ink);
 }
 .count {
   margin: 0.6rem 0 0;
@@ -590,7 +589,7 @@ p {
 .cap-list {
   display: grid;
   gap: 0.4rem;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
 }
 .cap {
   display: flex;
@@ -750,7 +749,9 @@ p {
   animation: fade-from-full 3.6s ease-in-out both;
 }
 .scene-sprout.is-result .rain {
-  animation: rain-fall 0.7s linear 4, fade-from-full 3.2s ease-out both;
+  animation:
+    rain-fall 0.7s linear 4,
+    fade-from-full 3.2s ease-out both;
 }
 .scene.is-result .clouds {
   opacity: 0.55;
@@ -841,4 +842,15 @@ p {
   .paper::after {
     width: 3rem;
   }
+}
+
+/* The describe step keeps its main action in view while the child scrolls the choices. */
+.note .actions.in-note {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  margin: 0.5rem -0.25rem 0;
+  padding: 0.7rem 0.25rem 0.8rem;
+  background: var(--paper);
+  border-top: 2px dashed var(--rule);
 }

@@ -7,7 +7,13 @@ import { DrawingCanvas } from "./DrawingCanvas";
 import { PersistentSvg, StrokesSvg } from "./StrokesSvg";
 import { Summary } from "./Summary";
 import { Trail } from "./Trail";
-import { describeCapabilities, normalizeCapabilities, thingName, type Capability, type CapabilityOrUnknown } from "@/lib/capabilities";
+import {
+  describeCapabilities,
+  normalizeCapabilities,
+  thingName,
+  type Capability,
+  type CapabilityOrUnknown,
+} from "@/lib/capabilities";
 import { companionAt, persistentLayers } from "@/lib/drawing/layers";
 import { exportCompositeBase64 } from "@/lib/drawing/render";
 import type { Stroke } from "@/lib/drawing/model";
@@ -24,14 +30,7 @@ import {
   startMood,
   type SceneIndex,
 } from "@/lib/missions/engine";
-import {
-  clearAllLocalData,
-  loadSession,
-  readEnvelope,
-  sameState,
-  saveSession,
-  SESSION_KEY,
-} from "@/lib/session/storage";
+import { clearAllLocalData, loadSession, readEnvelope, sameState, saveSession, SESSION_KEY } from "@/lib/session/storage";
 import { initialState, priorDecisions, reduce, type Action, type Phase, type SessionState } from "@/lib/session/state";
 
 type GameAction = Action | { type: "restore"; state: SessionState } | { type: "reset" };
@@ -281,8 +280,7 @@ export function Game() {
   const unsureHelper = helper.status === "failed" && helper.reason === "unsure";
 
   const decision = state.decisions[scene];
-  const result =
-    state.phase === "result" && decision ? resolveScene(state.missionId, scene, prior, decision) : null;
+  const result = state.phase === "result" && decision ? resolveScene(state.missionId, scene, prior, decision) : null;
   const next = scene < 2 ? getScene(state.missionId, (scene + 1) as SceneIndex) : null;
   const showSummary = state.phase === "summary";
 
@@ -301,6 +299,113 @@ export function Game() {
   const persistent = <PersistentSvg className="strokes-layer" layers={layers} companionAt={compAt} />;
 
   const story = sceneStory(state.missionId, scene, prior);
+
+  const actionButtons = (
+    <>
+      {state.phase === "intro" && (
+        <button type="button" className="btn primary" onClick={() => dispatch({ type: "startDrawing" })}>
+          Start drawing
+        </button>
+      )}
+      {state.phase === "draw" && (
+        <>
+          <button
+            type="button"
+            className="btn primary"
+            aria-disabled={needsLine}
+            aria-describedby={needsLine ? "action-hint" : undefined}
+            onClick={() => !needsLine && dispatch({ type: "finishDrawing" })}
+          >
+            I&apos;m done drawing
+          </button>
+          {needsLine && (
+            <p className="fine hint" id="action-hint">
+              Draw a line first, or choose what your idea does without drawing.
+            </p>
+          )}
+          <button type="button" className="btn" onClick={() => dispatch({ type: "chooseWithoutDrawing" })}>
+            Choose without drawing
+          </button>
+        </>
+      )}
+      {state.phase === "describe" && (
+        <>
+          {suggested ? (
+            <>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => dispatch({ type: "confirm", caps: suggested.caps, label: suggested.label })}
+              >
+                Yes, that&apos;s it
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setPicked(suggested.caps);
+                  setEditing(true);
+                }}
+              >
+                No, let me change it
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn primary"
+                aria-disabled={needsPick}
+                aria-describedby={needsPick ? "action-hint" : undefined}
+                onClick={() => normalized && dispatch({ type: "confirm", caps: normalized })}
+              >
+                That&apos;s what it does
+              </button>
+              {needsPick && (
+                <p className="fine hint" id="action-hint">
+                  Pick one or two things first.
+                </p>
+              )}
+              <button type="button" className="btn" onClick={() => dispatch({ type: "backToDrawing" })}>
+                {state.skippedDrawing ? "Draw instead" : "Keep drawing"}
+              </button>
+            </>
+          )}
+        </>
+      )}
+      {state.phase === "result" && next && (
+        <button type="button" className="btn primary" onClick={() => dispatch({ type: "nextScene" })}>
+          Next scene
+        </button>
+      )}
+      {state.phase === "result" && !next && (
+        <button type="button" className="btn primary" onClick={() => dispatch({ type: "seeSummary" })}>
+          See my adventure
+        </button>
+      )}
+      {showSummary && !confirmLeave && (
+        <>
+          <button type="button" className="btn primary" onClick={() => setConfirmLeave("next")}>
+            Try another adventure
+          </button>
+          <button type="button" className="btn" onClick={() => setConfirmLeave("replay")}>
+            Play this adventure again
+          </button>
+        </>
+      )}
+      {showSummary && confirmLeave && (
+        <div className="confirm-row" role="group" aria-label="Clear this adventure?">
+          <span>This clears your drawings from this adventure. Keep going?</span>
+          <button type="button" className="btn small danger" onClick={() => leaveSummary(confirmLeave)}>
+            {confirmLeave === "replay" ? "Yes, clear them and play again" : "Yes, clear them and go on"}
+          </button>
+          <button type="button" className="btn small" onClick={() => setConfirmLeave(null)}>
+            Not yet
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="shell" data-phase={state.phase} data-scene={scene} data-mission={state.missionId}>
@@ -413,7 +518,11 @@ export function Game() {
           {state.phase === "describe" && (
             <>
               <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                {suggested ? "Is this what you meant?" : unsureHelper ? "I'm not sure yet." : `What does your idea help ${hero} do?`}
+                {suggested
+                  ? "Is this what you meant?"
+                  : unsureHelper
+                    ? "I'm not sure yet."
+                    : `What does your idea help ${hero} do?`}
               </h2>
               {suggested ? (
                 <p className="story">
@@ -444,8 +553,8 @@ export function Game() {
                   ) : (
                     <>
                       <p className="fine" id="helper-note">
-                        This sends a small copy of the scene and your lines to an online helper. We do not keep it, and the
-                        helper service may keep it for a short time. You always decide what your idea does.
+                        This sends a small copy of the scene and your lines to an online helper. We do not keep it, and the helper
+                        service may keep it for a short time. You always decide what your idea does.
                       </p>
                       <button type="button" className="btn small" onClick={askHelper} aria-describedby="helper-note">
                         Ask the helper to look
@@ -461,6 +570,8 @@ export function Game() {
               )}
             </>
           )}
+
+          {state.phase === "describe" && <div className="actions in-note">{actionButtons}</div>}
 
           {state.phase === "result" && result && decision && (
             <>
@@ -517,110 +628,7 @@ export function Game() {
           )}
         </section>
 
-        <div className="actions">
-          {state.phase === "intro" && (
-            <button type="button" className="btn primary" onClick={() => dispatch({ type: "startDrawing" })}>
-              Start drawing
-            </button>
-          )}
-          {state.phase === "draw" && (
-            <>
-              <button
-                type="button"
-                className="btn primary"
-                aria-disabled={needsLine}
-                aria-describedby={needsLine ? "action-hint" : undefined}
-                onClick={() => !needsLine && dispatch({ type: "finishDrawing" })}
-              >
-                I&apos;m done drawing
-              </button>
-              {needsLine && (
-                <p className="fine hint" id="action-hint">
-                  Draw a line first, or choose what your idea does without drawing.
-                </p>
-              )}
-              <button type="button" className="btn" onClick={() => dispatch({ type: "chooseWithoutDrawing" })}>
-                Choose without drawing
-              </button>
-            </>
-          )}
-          {state.phase === "describe" && (
-            <>
-              {suggested ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={() => dispatch({ type: "confirm", caps: suggested.caps, label: suggested.label })}
-                  >
-                    Yes, that&apos;s it
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => {
-                      setPicked(suggested.caps);
-                      setEditing(true);
-                    }}
-                  >
-                    No, let me change it
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    aria-disabled={needsPick}
-                    aria-describedby={needsPick ? "action-hint" : undefined}
-                    onClick={() => normalized && dispatch({ type: "confirm", caps: normalized })}
-                  >
-                    That&apos;s what it does
-                  </button>
-                  {needsPick && (
-                    <p className="fine hint" id="action-hint">
-                      Pick one or two things first.
-                    </p>
-                  )}
-                  <button type="button" className="btn" onClick={() => dispatch({ type: "backToDrawing" })}>
-                    {state.skippedDrawing ? "Draw instead" : "Keep drawing"}
-                  </button>
-                </>
-              )}
-            </>
-          )}
-          {state.phase === "result" && next && (
-            <button type="button" className="btn primary" onClick={() => dispatch({ type: "nextScene" })}>
-              Next scene
-            </button>
-          )}
-          {state.phase === "result" && !next && (
-            <button type="button" className="btn primary" onClick={() => dispatch({ type: "seeSummary" })}>
-              See my adventure
-            </button>
-          )}
-          {showSummary && !confirmLeave && (
-            <>
-              <button type="button" className="btn primary" onClick={() => setConfirmLeave("next")}>
-                Try another adventure
-              </button>
-              <button type="button" className="btn" onClick={() => setConfirmLeave("replay")}>
-                Play this adventure again
-              </button>
-            </>
-          )}
-          {showSummary && confirmLeave && (
-            <div className="confirm-row" role="group" aria-label="Clear this adventure?">
-              <span>This clears your drawings from this adventure. Keep going?</span>
-              <button type="button" className="btn small danger" onClick={() => leaveSummary(confirmLeave)}>
-                {confirmLeave === "replay" ? "Yes, clear them and play again" : "Yes, clear them and go on"}
-              </button>
-              <button type="button" className="btn small" onClick={() => setConfirmLeave(null)}>
-                Not yet
-              </button>
-            </div>
-          )}
-        </div>
+        {state.phase !== "describe" && <div className="actions">{actionButtons}</div>}
       </main>
 
       <footer className="footer">

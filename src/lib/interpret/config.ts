@@ -51,9 +51,7 @@ export function publicCapabilities(config: InterpreterConfig): {
   remote: boolean;
   source: "fake" | "groq" | null;
 } {
-  return config.mode === "manual"
-    ? { remote: false, source: null }
-    : { remote: true, source: config.mode };
+  return config.mode === "manual" ? { remote: false, source: null } : { remote: true, source: config.mode };
 }
 
 /**

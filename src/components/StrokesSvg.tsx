@@ -44,7 +44,14 @@ export function PersistentSvg({
 }) {
   if (!layers.structure.length && !layers.companion.length) return null;
   return (
-    <svg className={className} viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false" data-testid="persistent-layer">
+    <svg
+      className={className}
+      viewBox="0 0 1000 700"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+      focusable="false"
+      data-testid="persistent-layer"
+    >
       <Paths strokes={layers.structure} opacity={0.9} />
       {layers.companion.length > 0 && (
         <g transform={`translate(${companionAt.x} ${companionAt.y}) scale(${companionAt.scale})`}>

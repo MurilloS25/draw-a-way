@@ -8,10 +8,7 @@ function run(actions: Action[], from: SessionState = initialState()): SessionSta
   return actions.reduce(reduce, from);
 }
 
-const play = (caps: string[]): Action[] => [
-  { type: "finishDrawing" },
-  { type: "confirm", caps: caps as never },
-];
+const play = (caps: string[]): Action[] => [{ type: "finishDrawing" }, { type: "confirm", caps: caps as never }];
 
 describe("session reducer: three scenes", () => {
   it("walks all three scenes to the summary", () => {
@@ -36,7 +33,14 @@ describe("session reducer: three scenes", () => {
   it("nothing changes before the child confirms, and bad capabilities never confirm", () => {
     const describing = run([{ type: "startDrawing" }, { type: "setStrokes", strokes: [stroke()] }, { type: "finishDrawing" }]);
     expect(describing.decisions).toEqual([]);
-    for (const bad of [[], ["teleports"], ["floats", "flies", "rolls"], ["floats", "floats"], ["unknown", "floats"], ["__proto__"]]) {
+    for (const bad of [
+      [],
+      ["teleports"],
+      ["floats", "flies", "rolls"],
+      ["floats", "floats"],
+      ["unknown", "floats"],
+      ["__proto__"],
+    ]) {
       expect(reduce(describing, { type: "confirm", caps: bad as never })).toBe(describing);
     }
     expect(reduce(initialState(), { type: "confirm", caps: ["floats"] })).toMatchObject({ phase: "intro", decisions: [] });
@@ -53,7 +57,10 @@ describe("session reducer: three scenes", () => {
   it("the no-drawing path is complete: three scenes without a stroke", () => {
     let s = run([{ type: "startDrawing" }, { type: "chooseWithoutDrawing" }, { type: "confirm", caps: ["shelters"] }]);
     s = run([{ type: "nextScene" }, { type: "chooseWithoutDrawing" }, { type: "confirm", caps: ["delivers"] }], s);
-    s = run([{ type: "nextScene" }, { type: "chooseWithoutDrawing" }, { type: "confirm", caps: ["unknown"] }, { type: "seeSummary" }], s);
+    s = run(
+      [{ type: "nextScene" }, { type: "chooseWithoutDrawing" }, { type: "confirm", caps: ["unknown"] }, { type: "seeSummary" }],
+      s,
+    );
     expect(s.phase).toBe("summary");
     expect(s.strokes).toEqual([]);
     expect(s.decisions.map((d) => d.skipped)).toEqual([true, true, true]);
@@ -76,7 +83,12 @@ describe("session reducer: three scenes", () => {
   });
 
   it("earlier scenes' strokes cannot be edited from a later scene", () => {
-    const s0 = run([{ type: "startDrawing" }, { type: "setStrokes", strokes: [stroke(0)] }, ...play(["floats"]), { type: "nextScene" }]);
+    const s0 = run([
+      { type: "startDrawing" },
+      { type: "setStrokes", strokes: [stroke(0)] },
+      ...play(["floats"]),
+      { type: "nextScene" },
+    ]);
     expect(reduce(s0, { type: "setStrokes", strokes: [] })).toBe(s0);
     expect(reduce(s0, { type: "setStrokes", strokes: [{ ...stroke(0) }] })).toBe(s0);
     expect(reduce(s0, { type: "setStrokes", strokes: [...s0.strokes, stroke(2)] })).toBe(s0);

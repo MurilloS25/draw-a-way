@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CAPABILITIES, CAPABILITY_META, UNKNOWN, normalizeCapabilities, sanitizeLabel, type Capability, type CapabilityOrUnknown } from "../capabilities";
+import {
+  CAPABILITIES,
+  CAPABILITY_META,
+  UNKNOWN,
+  normalizeCapabilities,
+  sanitizeLabel,
+  type Capability,
+  type CapabilityOrUnknown,
+} from "../capabilities";
 import { MISSIONS } from "./content";
 import {
   MISSION_IDS,
@@ -80,7 +88,17 @@ describe("capabilities", () => {
     expect(normalizeCapabilities(["floats"])).toEqual(["floats"]);
     expect(normalizeCapabilities(["floats", "flies"])).toEqual(["floats", "flies"]);
     expect(normalizeCapabilities([UNKNOWN])).toEqual([UNKNOWN]);
-    for (const bad of [[], ["floats", "flies", "rolls"], ["floats", "floats"], ["unknown", "floats"], ["teleports"], "floats", null, [1], [{}]]) {
+    for (const bad of [
+      [],
+      ["floats", "flies", "rolls"],
+      ["floats", "floats"],
+      ["unknown", "floats"],
+      ["teleports"],
+      "floats",
+      null,
+      [1],
+      [{}],
+    ]) {
       expect(normalizeCapabilities(bad), JSON.stringify(bad)).toBeNull();
     }
   });
@@ -175,7 +193,9 @@ describe("branch and merge", () => {
         const key = [
           sceneStory(id, 1, [d]),
           recallLines(id, [d]).join("|"),
-          persistentKinds(id, [d], 1).map((k) => k.kind).join(","),
+          persistentKinds(id, [d], 1)
+            .map((k) => k.kind)
+            .join(","),
           startMood(id, 1, [d]),
         ].join("##");
         const who = d.caps[0] as string;
@@ -199,7 +219,13 @@ describe("branch and merge", () => {
         (CAPABILITIES as readonly Capability[]).map((c2) => [dec([c1]), dec([c2])] as Decision[]),
       );
       const stories = new Set(base.map((p) => sceneStory(id, 2, p)));
-      const needSets = new Set(base.map((p) => activeNeeds(getScene(id, 2), p).map((n) => n.id).join(",")));
+      const needSets = new Set(
+        base.map((p) =>
+          activeNeeds(getScene(id, 2), p)
+            .map((n) => n.id)
+            .join(","),
+        ),
+      );
       expect(stories.size > 1 || needSets.size > 1, id).toBe(true);
     }
   });

@@ -226,8 +226,7 @@ export const MISSIONS: readonly Mission[] = [
           },
         ],
         prompt: "Draw something that helps Sprig through the night.",
-        sceneAlt:
-          "A sloping hillside at dusk with early stars. The sprout stands on a sunny patch. The soil has slippery marks.",
+        sceneAlt: "A sloping hillside at dusk with early stars. The sprout stands on a sunny patch. The soil has slippery marks.",
         needs: [
           {
             id: "warm",

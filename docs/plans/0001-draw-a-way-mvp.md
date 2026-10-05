@@ -86,17 +86,17 @@ battery/CPU cost on ordinary devices for unmeasured benefit.
 
 ## Limits (enforced in code)
 
-| Item | Limit |
-| --- | --- |
-| Logical canvas | 1000 x 700 integer units |
-| Strokes | 150 |
-| Points per stroke | 1,500 |
-| Total points | 15,000 |
-| Serialized session | 200 KB |
-| Session age | 24 h, then discarded |
-| Interpret image | PNG, <= 768 px each side, <= 300 KB decoded |
-| Interpret request body | <= 420 KB |
-| Groq timeout / retries | 10 s / at most 1 retry, never on 429 |
+| Item                            | Limit                                        |
+| ------------------------------- | -------------------------------------------- |
+| Logical canvas                  | 1000 x 700 integer units                     |
+| Strokes                         | 150                                          |
+| Points per stroke               | 1,500                                        |
+| Total points                    | 15,000                                       |
+| Serialized session              | 200 KB                                       |
+| Session age                     | 24 h, then discarded                         |
+| Interpret image                 | PNG, <= 768 px each side, <= 300 KB decoded  |
+| Interpret request body          | <= 420 KB                                    |
+| Groq timeout / retries          | 10 s / at most 1 retry, never on 429         |
 | Interpret budget (per instance) | 8 req/min shared, 300/day total, fail closed |
 
 ## Verification

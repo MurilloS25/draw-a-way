@@ -26,7 +26,11 @@ const EnvelopeSchema = z.object({
   writer: z.string().min(8).max(64),
   state: z.object({
     missionId: z.string(),
-    scene: z.number().int().min(0).max(SCENE_COUNT - 1),
+    scene: z
+      .number()
+      .int()
+      .min(0)
+      .max(SCENE_COUNT - 1),
     phase: z.enum(["draw", "describe", "result", "summary"]),
     strokes: StrokesSchema,
     decisions: z.array(DecisionSchema).max(SCENE_COUNT),
@@ -90,7 +94,14 @@ export function readEnvelope(text: string | null, now = Date.now()): Envelope | 
   return {
     writer,
     savedAt,
-    state: { ...initialState(state.missionId), scene, phase: state.phase, strokes: state.strokes, decisions, skippedDrawing: state.skippedDrawing },
+    state: {
+      ...initialState(state.missionId),
+      scene,
+      phase: state.phase,
+      strokes: state.strokes,
+      decisions,
+      skippedDrawing: state.skippedDrawing,
+    },
   };
 }
 

@@ -1,37 +1,46 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { MANUAL, VIEWPORTS, drawStroke, ARC, expect, noHorizontalScroll, open, test } from "./helpers";
+import { ARC, MANUAL, VIEWPORTS, drawStroke, expect, nextScene, noHorizontalScroll, open, playScene, test } from "./helpers";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 async function axe(page: Page, label: string) {
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  expect(
-    results.violations.map((v) => `${label}: ${v.id} (${v.nodes.length}) ${v.nodes[0]?.html.slice(0, 120)}`),
-  ).toEqual([]);
+  expect(results.violations.map((v) => `${label}: ${v.id} (${v.nodes.length}) ${v.nodes[0]?.html.slice(0, 120)}`)).toEqual([]);
 }
 
-/** Visits every stage of one mission, calling `check` on each. */
+/** Visits every kind of stage across all three scenes, calling `check` on each. */
 async function eachStage(page: Page, check: (label: string) => Promise<void>) {
   await check("intro");
   await page.getByRole("button", { name: "Start drawing" }).click();
-  await check("draw");
+  await check("s1-draw");
   await drawStroke(page, ARC);
-  await check("draw+line");
+  await check("s1-draw+line");
   await page.getByRole("button", { name: "I'm done drawing" }).click();
-  await check("confirm");
-  await page.getByRole("radio", { name: /A bridge/ }).check();
-  await check("confirm+selected");
-  await page.getByRole("button", { name: "That's my idea" }).click();
-  await check("consequence1");
-  await page.getByRole("button", { name: "Try a change" }).click();
-  await check("draw2");
-  await page.getByRole("button", { name: "I'm done drawing" }).click();
-  await page.getByRole("radio", { name: /Add a rail/ }).check();
-  await page.getByRole("button", { name: "That's my idea" }).click();
-  await check("consequence2");
-  await page.getByRole("button", { name: "See my story trail" }).click();
+  await check("s1-describe");
+  await page.getByRole("checkbox", { name: /Join two places/ }).check();
+  await page.getByRole("checkbox", { name: /Hold weight/ }).check();
+  await check("s1-describe+two");
+  await page.getByRole("button", { name: "That's what it does" }).click();
+  await check("s1-result");
+  await nextScene(page);
+  await check("s2-draw+persistent");
+  await playScene(
+    page,
+    [/Hold things in place/],
+    [
+      [0.5, 0.35],
+      [0.55, 0.62],
+    ],
+  );
+  await check("s2-result");
+  await nextScene(page);
+  await playScene(page, [/Something else/]);
+  await check("s3-result");
+  await page.getByRole("button", { name: "See my adventure" }).click();
   await check("summary");
+  await page.getByRole("button", { name: "Play this adventure again" }).click();
+  await check("summary+confirm");
 }
 
 test.describe("accessibility and layout", () => {
@@ -46,25 +55,44 @@ test.describe("accessibility and layout", () => {
     });
   }
 
-  test("axe on the other two missions and the helper-free confirm step", async ({ page }) => {
+  test("axe on the other adventures, the helper-free describe step, and the tab conflict banner", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
     await open(page);
-    for (const title of ["The windy hill", "Lost in the fog"]) {
+    for (const title of ["The windy hill", "Lights in the fog"]) {
       await page.getByRole("button", { name: title }).click();
       await axe(page, title);
       await page.getByRole("button", { name: "Start drawing" }).click();
-      await page.getByRole("button", { name: "Choose an idea without drawing" }).click();
-      await axe(page, `${title}/confirm`);
+      await axe(page, `${title}/draw`);
+      await page.getByRole("button", { name: "Choose without drawing" }).click();
+      await axe(page, `${title}/describe`);
       await page.getByRole("button", { name: "Draw instead" }).click();
-      await page.getByRole("button", { name: "Choose an idea without drawing" }).click();
-      await page.getByRole("radio").first().check();
-      await page.getByRole("button", { name: "That's my idea" }).click();
-      await axe(page, `${title}/consequence`);
+      await page.getByRole("button", { name: "Choose without drawing" }).click();
+      await page.getByRole("checkbox").first().check();
+      await page.getByRole("button", { name: "That's what it does" }).click();
+      await axe(page, `${title}/result`);
       await page.getByRole("button", { name: "Start over" }).click();
       await page.getByRole("button", { name: "Yes, erase and start over" }).click();
     }
+    const context = await browser.newContext();
+    const a = await context.newPage();
+    const b = await context.newPage();
+    await a.goto(baseURL ?? MANUAL);
+    await a.getByRole("button", { name: "Start drawing" }).click();
+    await drawStroke(a, ARC);
+    await b.goto(baseURL ?? MANUAL);
+    await drawStroke(b, [
+      [0.2, 0.3],
+      [0.4, 0.3],
+    ]);
+    await expect(a.getByTestId("tab-conflict")).toBeVisible();
+    await axe(a, "tab-conflict");
+    await context.close();
   });
 
-  test("text enlarged to 200% and browser zoom keep everything reachable", async ({ page }) => {
+  test("text enlarged to 200% and 400% zoom keep everything reachable", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await open(page);
     await page.evaluate(() => document.documentElement.style.setProperty("font-size", "200%", "important"));
@@ -77,19 +105,23 @@ test.describe("accessibility and layout", () => {
     await expect(done).toBeVisible();
     await done.click();
     await noHorizontalScroll(page);
+    const confirm = page.getByRole("button", { name: "That's what it does" });
+    await expect(confirm).toBeInViewport(); // the main action stays in view while the choices scroll
     // 400% zoom equals a 320 CSS px wide viewport.
+    await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
     await page.setViewportSize({ width: 320, height: 256 });
     await noHorizontalScroll(page);
     await axe(page, "400%-zoom");
+    await expect(confirm).toBeInViewport();
   });
 
   test("reduced motion removes animation and still shows the consequence", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();
-    await page.getByRole("button", { name: "Choose an idea without drawing" }).click();
-    await page.getByRole("radio", { name: /A bridge/ }).check();
-    await page.getByRole("button", { name: "That's my idea" }).click();
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    await page.getByRole("checkbox", { name: /Join two places/ }).check();
+    await page.getByRole("button", { name: "That's what it does" }).click();
     const hero = page.locator(".scene .hero");
     await expect(hero).toHaveCSS("animation-name", "none");
     // Final state is shown immediately: the snail is already across the river.
@@ -101,13 +133,25 @@ test.describe("accessibility and layout", () => {
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();
-    await page.getByRole("button", { name: "Choose an idea without drawing" }).click();
-    await page.getByRole("radio", { name: /A bridge/ }).check();
-    await page.getByRole("button", { name: "That's my idea" }).click();
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    await page.getByRole("checkbox", { name: /Join two places/ }).check();
+    await page.getByRole("button", { name: "That's what it does" }).click();
     await expect(page.locator(".scene .hero")).not.toHaveCSS("animation-name", "none");
   });
 
-  test("focus is visible, ordered, and moves to each new stage heading", async ({ page }) => {
+  test("a partial result stops the character short, a full one reaches the goal", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    await page.getByRole("checkbox", { name: /Hold weight/ }).check();
+    await page.getByRole("button", { name: "That's what it does" }).click();
+    const x = await page.locator(".scene .hero").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
+    expect(x).toBeGreaterThan(100);
+    expect(x).toBeLessThan(640);
+  });
+
+  test("focus is visible, ordered, and moves to each new scene heading", async ({ page }) => {
     await open(page);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to the mission" })).toBeFocused();
@@ -117,20 +161,13 @@ test.describe("accessibility and layout", () => {
     const ring = await page.getByRole("button", { name: "Start drawing" }).evaluate((e) => getComputedStyle(e).outlineWidth);
     expect(parseFloat(ring)).toBeGreaterThanOrEqual(3);
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("heading", { name: "Draw your idea" })).toBeFocused();
-    await expect(page.getByTestId("announcer")).toContainText("Step 2 of 4");
-  });
-
-  test("landscape phone: the sheet fits the screen height so the page stays scrollable", async ({ page }) => {
-    await page.setViewportSize({ width: 844, height: 390 });
-    await open(page);
-    await page.getByRole("button", { name: "Start drawing" }).click();
-    const box = (await page.locator(".paper").boundingBox())!;
-    expect(box.height).toBeLessThan(390);
-    await noHorizontalScroll(page);
-    const done = page.getByRole("button", { name: "I'm done drawing" });
-    await done.scrollIntoViewIfNeeded();
-    await expect(done).toBeInViewport();
+    await expect(page.getByRole("heading", { name: "Scene 1: The wide river" })).toBeFocused();
+    await expect(page.getByTestId("announcer")).toContainText("Scene 1 of 3");
+    await page.getByRole("button", { name: "Choose without drawing" }).press("Enter");
+    await expect(page.getByRole("heading", { name: /What does your idea help Mossy do/ })).toBeFocused();
+    await page.getByRole("checkbox", { name: /Float/ }).focus();
+    const checkboxRing = await page.evaluate(() => getComputedStyle(document.activeElement!.closest("label")!).outlineStyle);
+    expect(checkboxRing).not.toBe("none");
   });
 
   test("disabled-looking actions explain themselves and stay focusable", async ({ page }) => {
@@ -142,7 +179,10 @@ test.describe("accessibility and layout", () => {
     await done.focus();
     await expect(done).toBeFocused();
     await done.click({ force: true }); // Playwright treats aria-disabled as disabled
-    await expect(page.getByRole("heading", { name: "Draw your idea" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Scene 1: The wide river/ })).toBeVisible();
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    const ok = page.getByRole("button", { name: "That's what it does" });
+    await expect(ok).toHaveAccessibleDescription(/Pick one or two things first/);
   });
 
   test("Start over confirmation returns focus and closes with Escape", async ({ page }) => {
@@ -153,13 +193,26 @@ test.describe("accessibility and layout", () => {
     await expect(page.getByRole("button", { name: "Start over" })).toBeFocused();
   });
 
-  test("crayon radios use arrow keys", async ({ page }) => {
+  test("tool, color, and size radios use arrow keys and state is never color alone", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();
     await page.getByRole("radio", { name: "Ink blue" }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("radio", { name: "Berry red" })).toBeChecked();
     await expect(page.getByRole("radio", { name: "Berry red" })).toBeFocused();
+    await expect(page.getByTestId("tool-now")).toContainText("Berry red");
+    await page.getByRole("radio", { name: "Erase" }).click();
+    await expect(page.getByTestId("tool-now")).toContainText("Eraser");
+    await expect(page.getByRole("radio", { name: "Erase" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("landscape phone: the sheet fits the screen height so the page stays scrollable", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    const box = (await page.locator(".paper").boundingBox())!;
+    expect(box.height).toBeLessThan(390);
+    await noHorizontalScroll(page);
   });
 
   test("interactive targets are at least 44px", async ({ page }) => {
@@ -167,12 +220,29 @@ test.describe("accessibility and layout", () => {
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();
     const small = await page.evaluate(() =>
-      [...document.querySelectorAll("button")]
+      [...document.querySelectorAll("button, label.cap")]
         .map((b) => ({ n: b.getAttribute("aria-label") ?? b.textContent, r: b.getBoundingClientRect() }))
         .filter((b) => b.r.width > 0 && (b.r.width < 43.5 || b.r.height < 43.5))
         .map((b) => `${b.n}: ${Math.round(b.r.width)}x${Math.round(b.r.height)}`),
     );
     expect(small).toEqual([]);
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    const smallCaps = await page.evaluate(
+      () => [...document.querySelectorAll("label.cap")].filter((b) => b.getBoundingClientRect().height < 43.5).length,
+    );
+    expect(smallCaps).toBe(0);
+  });
+
+  test("every capability option has an icon and visible text, not color alone", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    await page.getByRole("button", { name: "Choose without drawing" }).click();
+    const labels = page.locator("label.cap");
+    expect(await labels.count()).toBe(15);
+    for (const l of await labels.all()) {
+      await expect(l.locator("svg.cap-icon")).toHaveCount(1);
+      expect((await l.locator(".cap-label").innerText()).length).toBeGreaterThan(2);
+    }
   });
 });
 
@@ -187,6 +257,7 @@ test.describe("security surface", () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain("img-src 'self' data: blob:");
     expect(h["x-content-type-options"]).toBe("nosniff");
     expect(h["referrer-policy"]).toBe("no-referrer");
     expect(h["permissions-policy"]).toContain("camera=()");
@@ -204,11 +275,13 @@ test.describe("security surface", () => {
   });
 
   test("interpret endpoint refuses hostile input and never calls out in manual mode", async ({ request }) => {
+    const json = { "content-type": "application/json" };
     const bad = [
-      { data: "not json", headers: { "content-type": "application/json" }, status: 400 },
-      { data: "x".repeat(500_000), headers: { "content-type": "application/json" }, status: 413 },
+      { data: "not json", headers: json, status: 400 },
+      { data: "x".repeat(600_000), headers: json, status: 413 },
       { data: "{}", headers: { "content-type": "text/plain" }, status: 415 },
-      { data: '{"missionId":"river","round":1,"imageBase64":"AAAA"}', headers: { "content-type": "application/json" }, status: 400 },
+      { data: '{"missionId":"river","scene":0,"imageBase64":"AAAA"}', headers: json, status: 400 },
+      { data: '{"missionId":"river","scene":9,"imageBase64":"AAAAAAAAAAAAAAAAAAAA"}', headers: json, status: 400 },
     ];
     for (const b of bad) {
       const res = await request.post(`${MANUAL}/api/interpret`, { data: b.data, headers: b.headers });

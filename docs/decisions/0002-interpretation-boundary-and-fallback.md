@@ -4,15 +4,17 @@
 - Date: 2026-10-05
 
 ## Context
+
 Visual interpretation of children's drawings is uncertain and optional. Drawings
 are untrusted data and must not be transmitted by default. Groq offers vision
 models with strict structured outputs and a restrictive free tier with 429s.
 
 ## Decision
+
 - The child always confirms. Narrative state changes only from a confirmed idea
   id that belongs to the active mission and round.
 - Interpreter interface: `interpret({missionId, round, candidates, image}) ->
-  {ideaId | "none", confidence}`. Implementations: `manual` (default, no call,
+{ideaId | "none", confidence}`. Implementations: `manual` (default, no call,
   child picks from the mission's ideas, worded as "tell us what you made", never
   as recognition), `fake` (deterministic, for tests and acceptance), `groq`
   (server-only).
@@ -29,11 +31,13 @@ models with strict structured outputs and a restrictive free tier with 429s.
 - No image, answer, key, or identifier is logged or stored.
 
 ## Consequences
+
 The product is fully usable without a provider. Real accuracy is unmeasured
 until a controlled session is run (see docs/GROQ.md). A global limiter would
 need external storage and is deliberately deferred.
 
 ## Alternatives considered
+
 In-browser inference: heavy downloads, unmeasured accuracy, device variance.
 Free-text or open model output: violates bounded narrative. Client-side calls
 with a key: leaks secrets.

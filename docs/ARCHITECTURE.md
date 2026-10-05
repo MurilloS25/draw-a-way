@@ -42,15 +42,15 @@ e2e/                      Playwright against the production build
 
 ### Boundaries and who may do what
 
-| Part | May | May not |
-| --- | --- | --- |
-| Mission content | Define every story string and id | Be changed at runtime |
-| Engine | Say which ids are valid for a mission, round, and prior idea | Touch DOM or network |
-| Session reducer | Change phase/ids from child actions; reject unknown ids | Accept ids not in the engine's candidates |
-| Storage | Persist and validate state under `drawaway:*` | Store images; trust stored data |
-| Interpreter (fake/groq) | Return an untrusted answer | Add text, ids, or state; log; store |
-| Service | Validate request and answer; map failures to fallbacks | Return provider text |
-| UI | Render content as text; ask the child | Use `innerHTML`; auto-send a drawing |
+| Part                    | May                                                          | May not                                   |
+| ----------------------- | ------------------------------------------------------------ | ----------------------------------------- |
+| Mission content         | Define every story string and id                             | Be changed at runtime                     |
+| Engine                  | Say which ids are valid for a mission, round, and prior idea | Touch DOM or network                      |
+| Session reducer         | Change phase/ids from child actions; reject unknown ids      | Accept ids not in the engine's candidates |
+| Storage                 | Persist and validate state under `drawaway:*`                | Store images; trust stored data           |
+| Interpreter (fake/groq) | Return an untrusted answer                                   | Add text, ids, or state; log; store       |
+| Service                 | Validate request and answer; map failures to fallbacks       | Return provider text                      |
+| UI                      | Render content as text; ask the child                        | Use `innerHTML`; auto-send a drawing      |
 
 ### Interpretation data flow
 

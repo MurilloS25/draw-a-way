@@ -9,8 +9,8 @@ request that leaves the origin).
 
 ## Browser storage
 
-| Key | Where | Contents | Written when | Removed when |
-| --- | --- | --- | --- | --- |
+| Key                   | Where          | Contents                                                                                                                                                                                                          | Written when                                        | Removed when                                                                                                                         |
+| --------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `drawaway:session:v1` | `localStorage` | Version, save time, mission id, round, phase, confirmed idea id, confirmed change id, "chose without drawing" flag, and simplified strokes (integers in a 1000x700 space: color index, size index, round, points) | After every step once the child has started drawing | "Start over", finishing to the intro, corrupt/oversize data, expired data (on the next visit), or any keys starting with `drawaway:` |
 
 Limits: 150 strokes, 1,500 points per stroke, 15,000 points total, 200 KB

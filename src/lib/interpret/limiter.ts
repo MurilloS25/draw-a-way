@@ -15,9 +15,7 @@ export interface Limiter {
  * bursts and fails closed on this instance. Client hints are hashed with a
  * per-process random salt and are never written anywhere.
  */
-export function createLimiter(
-  options: { perClientPerMinute?: number; perDay?: number; now?: () => number } = {},
-): Limiter {
+export function createLimiter(options: { perClientPerMinute?: number; perDay?: number; now?: () => number } = {}): Limiter {
   const perMinute = options.perClientPerMinute ?? INTERPRET_LIMITS.perClientPerMinute;
   const perDay = options.perDay ?? INTERPRET_LIMITS.perDay;
   const now = options.now ?? Date.now;

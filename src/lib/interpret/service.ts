@@ -4,13 +4,7 @@ import { createFakeInterpreter, parseScenario } from "./fake";
 import { createGroqInterpreter, type FetchLike } from "./groq";
 import type { Limiter } from "./limiter";
 import { validateRequest } from "./request";
-import {
-  InterpretError,
-  InterpretationSchema,
-  type FallbackReason,
-  type InterpretResponse,
-  type Interpreter,
-} from "./types";
+import { InterpretError, InterpretationSchema, type FallbackReason, type InterpretResponse, type Interpreter } from "./types";
 
 export interface ServiceDeps {
   config: InterpreterConfig;

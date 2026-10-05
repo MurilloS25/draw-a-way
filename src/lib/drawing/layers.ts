@@ -17,9 +17,21 @@ export interface Point {
 
 /** Where the hero stands at the start of each scene (logical units). */
 export const HERO_START: Record<MissionId, [Point, Point, Point]> = {
-  river: [{ x: 150, y: 470 }, { x: 800, y: 470 }, { x: 150, y: 470 }],
-  sprout: [{ x: 500, y: 520 }, { x: 250, y: 540 }, { x: 780, y: 470 }],
-  fog: [{ x: 130, y: 600 }, { x: 200, y: 610 }, { x: 800, y: 540 }],
+  river: [
+    { x: 150, y: 470 },
+    { x: 760, y: 470 },
+    { x: 150, y: 470 },
+  ],
+  sprout: [
+    { x: 500, y: 520 },
+    { x: 250, y: 540 },
+    { x: 780, y: 470 },
+  ],
+  fog: [
+    { x: 130, y: 600 },
+    { x: 200, y: 610 },
+    { x: 800, y: 540 },
+  ],
 };
 
 export const COMPANION_SCALE = 0.28;

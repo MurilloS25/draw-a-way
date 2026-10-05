@@ -59,25 +59,37 @@ export const ARC: [number, number][] = [
   [0.65, 0.62],
 ];
 
-export async function toConfirm(page: Page) {
-  await page.getByRole("button", { name: "Start drawing" }).click();
-  await drawStroke(page, ARC);
-  await page.getByRole("button", { name: "I'm done drawing" }).click();
+const done = (page: Page) => page.getByRole("button", { name: "I'm done drawing" });
+
+/** Draws one line and moves to the "what does it do" step. */
+export async function drawAndDescribe(page: Page, points: [number, number][] = ARC) {
+  await drawStroke(page, points);
+  await done(page).click();
+  await expect(
+    page.getByRole("heading", { name: /What does your idea help .* do\?|Is this what you meant\?|I'm not sure yet\./ }),
+  ).toBeVisible();
 }
 
-/** Completes both rounds of the current mission by picking the given options. */
-export async function finishMission(page: Page, first: RegExp, second: RegExp) {
-  await page.getByRole("radio", { name: first }).check();
-  await page.getByRole("button", { name: "That's my idea" }).click();
-  await page.getByRole("button", { name: "Try a change" }).click();
-  await drawStroke(page, [
-    [0.4, 0.3],
-    [0.6, 0.3],
-  ]);
-  await page.getByRole("button", { name: "I'm done drawing" }).click();
-  await page.getByRole("radio", { name: second }).check();
-  await page.getByRole("button", { name: "That's my idea" }).click();
-  await page.getByRole("button", { name: "See my story trail" }).click();
+export async function chooseCaps(page: Page, ...labels: RegExp[]) {
+  for (const l of labels) await page.getByRole("checkbox", { name: l }).check();
+  await page.getByRole("button", { name: "That's what it does" }).click();
+  await expect(page.getByRole("heading", { name: "Here is what happens" })).toBeVisible();
+}
+
+/** One scene with real mouse drawing. */
+export async function playScene(page: Page, caps: RegExp[], points: [number, number][] = ARC) {
+  await drawAndDescribe(page, points);
+  await chooseCaps(page, ...caps);
+}
+
+/** One scene without drawing. */
+export async function playSceneNoDraw(page: Page, caps: RegExp[]) {
+  await page.getByRole("button", { name: "Choose without drawing" }).click();
+  await chooseCaps(page, ...caps);
+}
+
+export async function nextScene(page: Page) {
+  await page.getByRole("button", { name: "Next scene" }).click();
 }
 
 export async function noHorizontalScroll(page: Page) {

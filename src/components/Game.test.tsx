@@ -9,7 +9,8 @@ import { initialState } from "@/lib/session/state";
 
 vi.mock("@/lib/drawing/render", async (orig) => ({
   ...(await orig<typeof import("@/lib/drawing/render")>()),
-  exportCompositeBase64: async () => "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+  exportCompositeBase64: async () =>
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
 }));
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
@@ -23,8 +24,10 @@ function mockFetch(handler: Handler) {
 
 const manual: Handler = (url) =>
   url.includes("capabilities") ? Response.json({ remote: false, source: null }) : new Response("no", { status: 500 });
-const remote = (interpretReply: () => Response | Promise<Response>): Handler => (url) =>
-  url.includes("capabilities") ? Response.json({ remote: true, source: "fake" }) : interpretReply();
+const remote =
+  (interpretReply: () => Response | Promise<Response>): Handler =>
+  (url) =>
+    url.includes("capabilities") ? Response.json({ remote: true, source: "fake" }) : interpretReply();
 
 beforeEach(() => {
   localStorage.clear();
@@ -252,7 +255,10 @@ describe("persistence", () => {
   });
 
   it("ignores corrupt or old stored data and starts fresh", async () => {
-    localStorage.setItem(SESSION_KEY, '{"v":2,"savedAt":1,"writer":"abcdefgh","state":{"missionId":"<img src=x onerror=alert(1)>"}}');
+    localStorage.setItem(
+      SESSION_KEY,
+      '{"v":2,"savedAt":1,"writer":"abcdefgh","state":{"missionId":"<img src=x onerror=alert(1)>"}}',
+    );
     localStorage.setItem("drawaway:session:v1", "{}");
     mockFetch(manual);
     render(<Game />);
@@ -355,8 +361,10 @@ describe("two tabs", () => {
 });
 
 describe("explicit helper (fake provider)", () => {
-  const ok = (caps: string[], label: string | null = null) => () =>
-    Response.json({ status: "ok", capabilities: caps, label, source: "fake" });
+  const ok =
+    (caps: string[], label: string | null = null) =>
+    () =>
+      Response.json({ status: "ok", capabilities: caps, label, source: "fake" });
 
   async function toDescribe(user: User) {
     await drawWithKeyboard(user);

@@ -34,7 +34,11 @@ function deps(over: Partial<ServiceDeps> = {}): ServiceDeps {
   };
 }
 
-const call = (rawBody: string, d: ServiceDeps, over: { scenario?: string; contentType?: string | null; signal?: AbortSignal } = {}) =>
+const call = (
+  rawBody: string,
+  d: ServiceDeps,
+  over: { scenario?: string; contentType?: string | null; signal?: AbortSignal } = {},
+) =>
   interpret(
     {
       rawBody,
@@ -69,7 +73,9 @@ describe("config", () => {
   it("requires a plausible key and an allowlisted model for groq", () => {
     expect(readConfig({ INTERPRETER_MODE: "groq" })).toEqual({ mode: "manual" });
     expect(readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: "short" })).toEqual({ mode: "manual" });
-    expect(readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: FAKE_KEY, GROQ_MODEL: "evil/model" })).toEqual({ mode: "manual" });
+    expect(readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: FAKE_KEY, GROQ_MODEL: "evil/model" })).toEqual({
+      mode: "manual",
+    });
     const ok = readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: FAKE_KEY });
     expect(ok.mode).toBe("groq");
     expect(ok.groq?.model).toBe(MODEL);
@@ -77,7 +83,9 @@ describe("config", () => {
 
   it("ignores fake mode in production unless explicitly allowed", () => {
     expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "production" })).toEqual({ mode: "manual" });
-    expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "production", ALLOW_FAKE_INTERPRETER: "1" })).toEqual({ mode: "fake" });
+    expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "production", ALLOW_FAKE_INTERPRETER: "1" })).toEqual({
+      mode: "fake",
+    });
     expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "development" })).toEqual({ mode: "fake" });
   });
 
@@ -93,7 +101,10 @@ describe("limit knobs", () => {
     expect(readLimits({})).toEqual({ perClientPerMinute: 8, perDay: 300 });
     expect(readLimits({ INTERPRET_PER_MINUTE: "abc", INTERPRET_PER_DAY: "-4" })).toEqual({ perClientPerMinute: 8, perDay: 300 });
     expect(readLimits({ INTERPRET_PER_MINUTE: "2", INTERPRET_PER_DAY: "10" })).toEqual({ perClientPerMinute: 2, perDay: 10 });
-    expect(readLimits({ INTERPRET_PER_MINUTE: "99999", INTERPRET_PER_DAY: "99999" })).toEqual({ perClientPerMinute: 60, perDay: 2000 });
+    expect(readLimits({ INTERPRET_PER_MINUTE: "99999", INTERPRET_PER_DAY: "99999" })).toEqual({
+      perClientPerMinute: 60,
+      perDay: 2000,
+    });
   });
 });
 
@@ -259,7 +270,10 @@ describe("groq adapter (fake fetch only)", () => {
     signal,
   });
   const reply = (content: unknown, init: ResponseInit = { status: 200 }) =>
-    new Response(JSON.stringify({ choices: [{ message: { content: typeof content === "string" ? content : JSON.stringify(content) } }] }), init);
+    new Response(
+      JSON.stringify({ choices: [{ message: { content: typeof content === "string" ? content : JSON.stringify(content) } }] }),
+      init,
+    );
   const make = (fetchImpl: FetchLike, extra: { timeoutMs?: number; maxRetries?: number } = {}) =>
     createGroqInterpreter({ apiKey: FAKE_KEY, model: MODEL, fetchImpl, ...extra });
 
@@ -273,7 +287,13 @@ describe("groq adapter (fake fetch only)", () => {
     const schema = sent.response_format.json_schema.schema;
     expect(sent.response_format.json_schema.strict).toBe(true);
     expect(schema.additionalProperties).toBe(false);
-    expect(schema.required).toEqual(["proposed_affordances", "optional_safe_label", "confidence", "uncertain", "needs_child_confirmation"]);
+    expect(schema.required).toEqual([
+      "proposed_affordances",
+      "optional_safe_label",
+      "confidence",
+      "uncertain",
+      "needs_child_confirmation",
+    ]);
     expect(schema.properties.proposed_affordances.items.enum).toEqual([...CAPABILITIES, "unknown"]);
     expect(sent.messages[0].content).toMatch(/untrusted/i);
     expect(sent.messages[0].content).toMatch(/decide anything/i);
@@ -295,7 +315,10 @@ describe("groq adapter (fake fetch only)", () => {
 
   it("does not retry 429 and reports retry-after", async () => {
     const f = vi.fn(async () => new Response("{}", { status: 429, headers: { "retry-after": "12" } }));
-    await expect(make(f as unknown as FetchLike).interpret(input())).rejects.toMatchObject({ kind: "rate_limited", retryAfterSeconds: 12 });
+    await expect(make(f as unknown as FetchLike).interpret(input())).rejects.toMatchObject({
+      kind: "rate_limited",
+      retryAfterSeconds: 12,
+    });
     expect(f).toHaveBeenCalledTimes(1);
   });
 
@@ -312,23 +335,32 @@ describe("groq adapter (fake fetch only)", () => {
 
   it("stops retrying when the budget says no", async () => {
     const f = vi.fn(async () => new Response("oops", { status: 503 }));
-    const g = createGroqInterpreter({ apiKey: FAKE_KEY, model: MODEL, fetchImpl: f as unknown as FetchLike, allowRetry: () => false });
+    const g = createGroqInterpreter({
+      apiKey: FAKE_KEY,
+      model: MODEL,
+      fetchImpl: f as unknown as FetchLike,
+      allowRetry: () => false,
+    });
     await expect(g.interpret(input())).rejects.toMatchObject({ kind: "unavailable" });
     expect(f).toHaveBeenCalledTimes(1);
   });
 
   it("times out without retrying", async () => {
     const f = vi.fn(
-      (_url: string, init: RequestInit) => new Promise<Response>((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))),
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))),
     );
-    await expect(make(f as unknown as FetchLike, { timeoutMs: 20 }).interpret(input())).rejects.toMatchObject({ kind: "timeout" });
+    await expect(make(f as unknown as FetchLike, { timeoutMs: 20 }).interpret(input())).rejects.toMatchObject({
+      kind: "timeout",
+    });
     expect(f).toHaveBeenCalledTimes(1);
   });
 
   it("honors caller cancellation", async () => {
     const controller = new AbortController();
     const f = vi.fn(
-      (_url: string, init: RequestInit) => new Promise<Response>((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))),
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))),
     );
     const p = make(f as unknown as FetchLike).interpret(input(controller.signal));
     controller.abort();
@@ -376,14 +408,20 @@ describe("groq adapter (fake fetch only)", () => {
   });
 
   it("asks the child when the model is unsure, low confidence, or says unknown", async () => {
-    for (const p of [proposal(["unknown"]), proposal(["floats"], { uncertain: true }), proposal(["floats"], { confidence: "low" })]) {
+    for (const p of [
+      proposal(["unknown"]),
+      proposal(["floats"], { uncertain: true }),
+      proposal(["floats"], { confidence: "low" }),
+    ]) {
       const f = vi.fn(async () => reply(p));
       expect((await call(body(), groqDeps(f))).body).toEqual({ status: "fallback", reason: "unsure" });
     }
   });
 
   it("returns a valid proposal end to end and vets the label", async () => {
-    const f = vi.fn(async () => reply(proposal(["connects_places", "supports_weight"], { optional_safe_label: "Giraffe Bridge" })));
+    const f = vi.fn(async () =>
+      reply(proposal(["connects_places", "supports_weight"], { optional_safe_label: "Giraffe Bridge" })),
+    );
     expect((await call(body(), groqDeps(f))).body).toEqual({
       status: "ok",
       capabilities: ["connects_places", "supports_weight"],

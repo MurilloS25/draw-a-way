@@ -46,12 +46,9 @@ export function nextMissionId(id: MissionId): MissionId {
   return MISSION_IDS[(MISSION_IDS.indexOf(id) + 1) % MISSION_IDS.length] as MissionId;
 }
 
-const realCaps = (caps: readonly CapabilityOrUnknown[]): Capability[] =>
-  caps.filter((c): c is Capability => c !== UNKNOWN);
+const realCaps = (caps: readonly CapabilityOrUnknown[]): Capability[] => caps.filter((c): c is Capability => c !== UNKNOWN);
 
-const priorCapsOf = (decisions: readonly Decision[]): Capability[] => [
-  ...new Set(decisions.flatMap((d) => realCaps(d.caps))),
-];
+const priorCapsOf = (decisions: readonly Decision[]): Capability[] => [...new Set(decisions.flatMap((d) => realCaps(d.caps)))];
 
 const intersects = (a: readonly Capability[], b: readonly Capability[]) => a.some((x) => b.includes(x));
 
@@ -138,7 +135,11 @@ export function resolveScene(
   else if (solved + helped > 0) level = "partial";
   else level = "neutral";
 
-  const keeps: Consequence["keeps"] = intersects(caps, STRUCTURAL) ? "structure" : intersects(caps, MOBILE) ? "companion" : "none";
+  const keeps: Consequence["keeps"] = intersects(caps, STRUCTURAL)
+    ? "structure"
+    : intersects(caps, MOBILE)
+      ? "companion"
+      : "none";
   const effect = describeEffect(decision.caps, decision.label, mission.hero);
   return {
     level,
@@ -200,16 +201,21 @@ export function buildSummary(missionId: MissionId, decisions: readonly Decision[
   const fulls = levels.filter((l) => l === "full").length;
   const neutrals = levels.filter((l) => l === "neutral").length;
   let closing: string;
-  if (fulls >= 2) closing = `Your ideas worked well together, and ${mission.hero} finished the adventure with things in good shape.`;
-  else if (neutrals >= 2) closing = `Your ideas took the story to places we did not plan. That is what made this adventure yours.`;
+  if (fulls >= 2)
+    closing = `Your ideas worked well together, and ${mission.hero} finished the adventure with things in good shape.`;
+  else if (neutrals >= 2)
+    closing = `Your ideas took the story to places we did not plan. That is what made this adventure yours.`;
   else closing = `Some ideas solved the problem and some left room to grow. ${mission.hero} kept going every time.`;
 
   const counts = new Map<Capability, number>();
   for (const d of decisions) for (const c of realCaps(d.caps)) counts.set(c, (counts.get(c) ?? 0) + 1);
   const repeated = [...counts].find(([, n]) => n >= 2)?.[0];
-  if (repeated) closing += ` You came back to the idea of how to ${CAPABILITY_META[repeated].phrase} more than once, and the story remembered.`;
+  if (repeated)
+    closing += ` You came back to the idea of how to ${CAPABILITY_META[repeated].phrase} more than once, and the story remembered.`;
 
-  const keepIndex = decisions.findIndex((d, i) => i < 2 && resolveScene(missionId, i as SceneIndex, decisions.slice(0, i), d).keeps === "structure");
+  const keepIndex = decisions.findIndex(
+    (d, i) => i < 2 && resolveScene(missionId, i as SceneIndex, decisions.slice(0, i), d).keeps === "structure",
+  );
   if (keepIndex >= 0) {
     closing += ` ${thingName(decisions[keepIndex]!.label, true)} from scene ${keepIndex + 1} stayed in the story.`;
   }

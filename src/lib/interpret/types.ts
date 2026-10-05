@@ -53,13 +53,7 @@ export interface Interpreter {
   interpret(input: InterpretInput): Promise<unknown>;
 }
 
-export type FallbackReason =
-  | "disabled"
-  | "rate_limited"
-  | "unavailable"
-  | "invalid_response"
-  | "timeout"
-  | "unsure";
+export type FallbackReason = "disabled" | "rate_limited" | "unavailable" | "invalid_response" | "timeout" | "unsure";
 
 export type InterpretResponse =
   | {

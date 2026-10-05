@@ -184,7 +184,8 @@ export function describeCapabilities(caps: readonly CapabilityOrUnknown[]): stri
 }
 
 const LABEL_RE = /^[A-Za-z][A-Za-z'-]*(?: [A-Za-z][A-Za-z'-]*){0,2}$/;
-const LABEL_BLOCK = /(ignore|instruction|system|prompt|assistant|password|address|phone|email|http|www|click|follow|obey|name is|\bkill|\bdie\b|blood|weapon|gun\b)/i;
+const LABEL_BLOCK =
+  /(ignore|instruction|system|prompt|assistant|password|address|phone|email|http|www|click|follow|obey|name is|\bkill|\bdie\b|blood|weapon|gun\b)/i;
 
 /**
  * An optional decorative name for the invention. It is plain text, short, never

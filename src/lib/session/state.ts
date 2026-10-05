@@ -1,12 +1,6 @@
 import { normalizeCapabilities, sanitizeLabel, type CapabilityOrUnknown } from "../capabilities";
 import { canAddStroke, type Stroke } from "../drawing/model";
-import {
-  isMissionId,
-  nextMissionId,
-  SCENE_COUNT,
-  type Decision,
-  type SceneIndex,
-} from "../missions/engine";
+import { isMissionId, nextMissionId, SCENE_COUNT, type Decision, type SceneIndex } from "../missions/engine";
 import type { MissionId } from "../missions/types";
 
 export type Phase = "intro" | "draw" | "describe" | "result" | "summary";

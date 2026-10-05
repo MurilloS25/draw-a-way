@@ -15,9 +15,7 @@ export async function fetchCapabilities(signal?: AbortSignal): Promise<Capabilit
     const res = await fetch("/api/capabilities", { cache: "no-store", signal });
     if (!res.ok) return NONE;
     const d = (await res.json()) as Partial<Capabilities>;
-    return d && d.remote === true && (d.source === "fake" || d.source === "groq")
-      ? { remote: true, source: d.source }
-      : NONE;
+    return d && d.remote === true && (d.source === "fake" || d.source === "groq") ? { remote: true, source: d.source } : NONE;
   } catch {
     return NONE;
   }
@@ -61,7 +59,9 @@ export async function requestInterpretation(
       }
       return { status: "fallback", reason: "invalid_response" };
     }
-    const reason = (REASONS as readonly unknown[]).includes(data.reason) ? (data.reason as (typeof REASONS)[number]) : "unavailable";
+    const reason = (REASONS as readonly unknown[]).includes(data.reason)
+      ? (data.reason as (typeof REASONS)[number])
+      : "unavailable";
     return { status: "fallback", reason };
   } catch {
     return { status: "fallback", reason: "unavailable" };

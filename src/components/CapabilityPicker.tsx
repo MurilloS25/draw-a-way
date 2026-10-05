@@ -36,12 +36,12 @@ export function CapabilityPicker({ selected, onChange, disabled }: Props) {
     const checked = selected.includes(id);
     const blocked = !checked && id !== UNKNOWN && full;
     return (
-      <label key={id} className={`cap ${checked ? "is-on" : ""} ${blocked ? "is-blocked" : ""}`}>
+      <label key={id} className={`cap ${checked ? "is-on" : ""} ${blocked ? "is-blocked" : ""}`} title={CAPABILITY_META[id].hint}>
         <input type="checkbox" checked={checked} disabled={disabled || blocked} onChange={() => toggle(id)} />
         <CapabilityIcon id={id} />
         <span className="cap-text">
           <span className="cap-label">{CAPABILITY_META[id].label}</span>
-          <span className="cap-hint">{CAPABILITY_META[id].hint}</span>
+          <span className="cap-hint sr-only">{CAPABILITY_META[id].hint}</span>
         </span>
       </label>
     );

@@ -66,7 +66,7 @@ can accept or correct.
 - Drawings stay on the device. One local storage key (`drawaway:session:v1`)
   holds the current session as simplified lines. See [docs/PRIVACY.md](docs/PRIVACY.md).
 - "Start over" erases everything the app stored.
-- Nothing is sent anywhere unless a helper is configured *and* the child presses
+- Nothing is sent anywhere unless a helper is configured _and_ the child presses
   its button, which discloses the upload first. Only a small black-and-white
   copy of the lines is sent, with no page content or metadata.
 

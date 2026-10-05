@@ -20,16 +20,24 @@ for (const f of client) {
     if (text.includes(needle)) problems.push(`${f}: client bundle mentions ${needle}`);
   }
   if (/gsk_[A-Za-z0-9]{20,}/.test(text)) problems.push(`${f}: key-shaped string`);
-  if (/https?:\/\/(?!127\.0\.0\.1|localhost|www\.w3\.org|react\.dev|nextjs\.org)[a-z0-9.-]+\.[a-z]{2,}/i.test(text.replace(/https?:\/\/(?:www\.w3\.org|react\.dev|nextjs\.org)[^"'`\s)]*/gi, ""))) {
+  if (
+    /https?:\/\/(?!127\.0\.0\.1|localhost|www\.w3\.org|react\.dev|nextjs\.org)[a-z0-9.-]+\.[a-z]{2,}/i.test(
+      text.replace(/https?:\/\/(?:www\.w3\.org|react\.dev|nextjs\.org)[^"'`\s)]*/gi, ""),
+    )
+  ) {
     // Informational: list third-party URLs embedded in client code (framework error links etc.).
-    const urls = [...new Set(text.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'`\s)]*/gi) ?? [])].filter((u) => !/w3\.org|react\.dev|nextjs\.org/.test(u));
+    const urls = [...new Set(text.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'`\s)]*/gi) ?? [])].filter(
+      (u) => !/w3\.org|react\.dev|nextjs\.org/.test(u),
+    );
     if (urls.length) console.log(`note: ${f} contains URL strings (not requested at runtime): ${urls.slice(0, 5).join(", ")}`);
   }
 }
 const bytes = client.reduce((n, f) => n + statSync(f).size, 0);
 const js = client.filter((f) => f.endsWith(".js"));
 const jsBytes = js.reduce((n, f) => n + statSync(f).size, 0);
-console.log(`Client output: ${client.length} files, ${(bytes / 1024).toFixed(0)} KiB total, ${(jsBytes / 1024).toFixed(0)} KiB JS.`);
+console.log(
+  `Client output: ${client.length} files, ${(bytes / 1024).toFixed(0)} KiB total, ${(jsBytes / 1024).toFixed(0)} KiB JS.`,
+);
 if (problems.length) {
   console.error("Build review failed:\n" + problems.join("\n"));
   process.exit(1);

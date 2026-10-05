@@ -116,8 +116,7 @@ export function createGroqInterpreter(options: {
       const text = await res.text();
       if (text.length > INTERPRET_LIMITS.maxResponseChars) throw new InterpretError("invalid");
       const envelope: unknown = JSON.parse(text);
-      const content = (envelope as { choices?: { message?: { content?: unknown } }[] })?.choices?.[0]
-        ?.message?.content;
+      const content = (envelope as { choices?: { message?: { content?: unknown } }[] })?.choices?.[0]?.message?.content;
       if (typeof content !== "string" || content.length > 2000) throw new InterpretError("invalid");
       return JSON.parse(content) as unknown;
     } catch (error) {

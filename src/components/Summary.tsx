@@ -20,7 +20,12 @@ export function Summary({ state }: { state: SessionState }) {
             <li key={step.title} className="step">
               <figure className="snap">
                 <div className="paper small">
-                  <Backdrop missionId={state.missionId} scene={scene} mode="idle" mood={startMood(state.missionId, scene, state.decisions.slice(0, i))} />
+                  <Backdrop
+                    missionId={state.missionId}
+                    scene={scene}
+                    mode="idle"
+                    mood={startMood(state.missionId, scene, state.decisions.slice(0, i))}
+                  />
                   <PersistentSvg className="strokes-layer" layers={layers} companionAt={companionAt(state.missionId, scene)} />
                   <StrokesSvg className="strokes-layer" strokes={state.strokes.filter((s) => s.s === i)} />
                 </div>
