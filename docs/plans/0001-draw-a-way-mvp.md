@@ -142,3 +142,29 @@ All phases 1-7 are complete except human acceptance. Gates:
 - G4: PR open, not merged; nothing deployed.
 
 Deviations from the original plan: per-client rate limiting became a single shared bucket because forwarded-for headers are client-controlled; the plan table's "per client bucket" no longer applies.
+
+## Round 2: capability-driven three-scene adventures
+
+Manual acceptance of the first MVP (a human check, sanitized): the application was
+quick to understand, simple, and well designed, and the flow worked. It did not test
+real interpretation and no Groq call was made. The follow-up goal: stories that react
+to the child's creativity, including inventions nobody planned.
+
+Delivered (see ADRs 0005-0008):
+
+- Each adventure is exactly three scenes with evolving problems, characters, and scenery.
+- Ideas are understood as 1-2 confirmed capabilities from a 14-item taxonomy (plus
+  `unknown`), never as a closed object list. Manual mode asks the child; the optional
+  helper only proposes, the child accepts, changes, or replaces.
+- Declarative engine: needs, outcome levels, story variants, branch-and-merge, persistent
+  effects, text summary of the three decisions.
+- Layered canvas (backdrop, persistent elements, current strokes, interface), eraser,
+  undo/redo, clear with confirmation, pen pressure as an enhancement, light casing on lines.
+- Composite raster for the optional helper; strict structured contract with `uncertain`,
+  `confidence`, `needs_child_confirmation`, and a vetted allowlist label.
+- Storage v2 with a writer id, tab-conflict handling, replay warning.
+
+Verification (final tree): format, lint, typecheck, 107 unit/component tests in 6 files,
+production build, 55 Chromium e2e tests, secret scan (80 files), build review, `npm audit`
+(0 vulnerabilities), and three independent reviews (no P0; P1/P2 fixed, remaining items
+listed in the README). No real provider or model call was made and nothing was deployed.
