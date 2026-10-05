@@ -51,3 +51,20 @@ export function publicCapabilities(config: InterpreterConfig): {
     ? { remote: false, source: null }
     : { remote: true, source: config.mode };
 }
+
+/**
+ * Optional knobs for free-tier budgeting. Invalid values fall back to the
+ * defaults and nothing can exceed the hard ceilings.
+ */
+export const LIMIT_CEILINGS = { perClientPerMinute: 60, perDay: 2000 } as const;
+
+export function readLimits(env: Env): { perClientPerMinute: number; perDay: number } {
+  const pick = (raw: string | undefined, fallback: number, ceiling: number) => {
+    const n = Number.parseInt(raw ?? "", 10);
+    return Number.isInteger(n) && n >= 1 ? Math.min(n, ceiling) : fallback;
+  };
+  return {
+    perClientPerMinute: pick(env.INTERPRET_PER_MINUTE, INTERPRET_LIMITS.perClientPerMinute, LIMIT_CEILINGS.perClientPerMinute),
+    perDay: pick(env.INTERPRET_PER_DAY, INTERPRET_LIMITS.perDay, LIMIT_CEILINGS.perDay),
+  };
+}

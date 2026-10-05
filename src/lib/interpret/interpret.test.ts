@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GROQ_ENDPOINT, INTERPRET_LIMITS, publicCapabilities, readConfig } from "./config";
+import { GROQ_ENDPOINT, INTERPRET_LIMITS, publicCapabilities, readConfig, readLimits } from "./config";
 import { createFakeInterpreter } from "./fake";
 import { buildPrompt, buildRequestBody, createGroqInterpreter, type FetchLike } from "./groq";
 import { createLimiter } from "./limiter";
@@ -65,6 +65,15 @@ describe("config", () => {
     const caps = publicCapabilities(readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: FAKE_KEY }));
     expect(JSON.stringify(caps)).not.toContain(FAKE_KEY);
     expect(caps).toEqual({ remote: true, source: "groq" });
+  });
+});
+
+describe("limit knobs", () => {
+  it("uses defaults, ignores junk, and never exceeds the ceilings", () => {
+    expect(readLimits({})).toEqual({ perClientPerMinute: 8, perDay: 300 });
+    expect(readLimits({ INTERPRET_PER_MINUTE: "abc", INTERPRET_PER_DAY: "-4" })).toEqual({ perClientPerMinute: 8, perDay: 300 });
+    expect(readLimits({ INTERPRET_PER_MINUTE: "2", INTERPRET_PER_DAY: "10" })).toEqual({ perClientPerMinute: 2, perDay: 10 });
+    expect(readLimits({ INTERPRET_PER_MINUTE: "99999", INTERPRET_PER_DAY: "99999" })).toEqual({ perClientPerMinute: 60, perDay: 2000 });
   });
 });
 

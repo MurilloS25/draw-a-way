@@ -201,13 +201,12 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
   useEffect(() => {
     const area = areaRef.current;
     if (!area) return;
-    const lift = (announce: boolean) => {
+    const lift = () => {
       if (!live.current) return;
       const points = live.current;
       live.current = null;
       setPenDown(false);
       commit(points);
-      if (announce) latest.current.onAnnounce("Pen up.");
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.metaKey) return;
@@ -249,7 +248,7 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         if (live.current) {
-          lift(true);
+          lift();
         } else if (e.repeat) {
           return;
         } else {
@@ -263,12 +262,12 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       }
       if (e.key === "Escape" && live.current) {
         e.preventDefault();
-        lift(true);
+        lift();
       }
     };
     const onBlur = () => {
       setFocused(false);
-      lift(false);
+      lift();
     };
     const onFocus = () => setFocused(area.matches(":focus-visible"));
     area.addEventListener("keydown", onKey);

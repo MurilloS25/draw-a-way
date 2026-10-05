@@ -1,4 +1,4 @@
-import { INTERPRET_LIMITS } from "@/lib/interpret/config";
+import { INTERPRET_LIMITS, readLimits } from "@/lib/interpret/config";
 import { createLimiter } from "@/lib/interpret/limiter";
 import { interpret, readConfig } from "@/lib/interpret/service";
 
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Per-instance memory only. See docs/GROQ.md: this is not a global limit.
-const limiter = createLimiter();
+const limiter = createLimiter(readLimits(process.env));
 
 const NO_STORE = { "cache-control": "no-store" } as const;
 

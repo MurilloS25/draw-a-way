@@ -39,7 +39,7 @@ export function createFakeInterpreter(scenario: FakeScenario = "ok", slowMs = 50
         case "fail":
           throw new InterpretError("unavailable");
         case "rate":
-          throw new InterpretError("rate_limited", 30);
+          throw new InterpretError("rate_limited", 1);
         case "slow":
           await new Promise<void>((resolve, reject) => {
             const t = setTimeout(resolve, slowMs);

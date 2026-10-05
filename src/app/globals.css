@@ -176,7 +176,6 @@ p {
   .paper-col {
     justify-self: start;
     width: min(100%, calc((100dvh - 15rem) * 10 / 7));
-    min-width: 28rem;
   }
 }
 
@@ -187,10 +186,12 @@ p {
   margin: 0 0 1rem;
   padding: 0;
   display: flex;
-  gap: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.25rem;
 }
 .stop {
-  flex: 1;
+  flex: 1 1 4.5rem;
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -209,6 +210,9 @@ p {
 }
 .stop:last-child::before {
   display: none;
+}
+.stop-label {
+  overflow-wrap: anywhere;
 }
 .dot {
   position: relative;
