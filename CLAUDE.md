@@ -1,3 +1,6 @@
 @AGENTS.md
 
-Use `docs/ARCHITECTURE.md` for system boundaries and `docs/HARNESS.md` for the working loop. Keep source facts, calculated metrics, and model interpretation separate, and never infer permission to use or redistribute football data or media.
+Use `docs/ARCHITECTURE.md` for product and trust boundaries and
+`docs/HARNESS.md` for the working loop. Preserve the child's authorship,
+privacy, ability to correct the system, and access to a useful provider-free
+fallback.

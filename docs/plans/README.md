@@ -13,7 +13,8 @@ Included and explicitly excluded work.
 Ordered implementation slices and affected boundaries.
 
 ## Verification
-Commands, dataset fixtures, expected calculations and evidence, numerical tolerances, and failure cases.
+Commands, deterministic fixtures, safety and narrative cases, accessibility
+evidence, performance budgets, provider-free behavior, and failure cases.
 
 ## Decisions or follow-ups
 Durable decisions to record and intentionally deferred work.

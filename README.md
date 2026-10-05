@@ -1,75 +1,53 @@
-# MatchLens
+# Draw a Way
 
-Evidence-backed football match analysis built as a focused learning and portfolio project.
+Draw a solution. See what it changes. Try again.
 
-MatchLens turns a small, curated set of historical matches into understandable visual evidence and bounded AI explanations. It is intentionally not a live-score service, betting product, professional scouting platform, or attempt to cover all of world football.
+Draw a Way is a guided creative experience in which a child responds to a
+small story problem with a drawing. The application interprets the idea,
+asks the child to confirm or correct that interpretation, and then reveals a
+consequence that invites another thoughtful change.
+
+It is not a drawing contest, an open chatbot, or a generator that replaces a
+child's artwork. The child's idea remains the center of the experience.
 
 ## Status
 
-Development harness ready; implementation has not started.
+The product is in foundation planning. No application, model, provider, user
+data store, or deployment has been selected or implemented yet.
 
 ## Start here
 
-- [Architecture](docs/ARCHITECTURE.md)
+- [Architecture boundary](docs/ARCHITECTURE.md)
 - [Development harness](docs/HARNESS.md)
 - [Agent guide](AGENTS.md)
 
-## Why this project exists
+## Product principles
 
-The goal is to learn and demonstrate the engineering behind trustworthy sports analytics:
+- Start immediately with a clear mission; do not require onboarding, an
+  account, a name, or personal information.
+- Let the child confirm or correct the application's interpretation before
+  the story moves forward.
+- Never score artistic quality or replace the original drawing with a more
+  polished generated image.
+- Prefer short, bounded sessions without public feeds, streaks, advertising,
+  or manipulative engagement loops.
+- Keep drawings and progress on the device wherever practical.
+- Design for touch, mouse, stylus, keyboard, reduced motion, zoom, and clear
+  non-visual instructions.
+- Keep the essential experience usable when optional AI is unavailable.
+- Require zero monetary cost and avoid services that can charge
+  automatically.
 
-- ingesting and validating real event data;
-- modelling historical matches in a relational database;
-- calculating reproducible metrics with transparent formulas;
-- building useful football visualisations;
-- letting an AI analyst explain only evidence the application can verify;
-- evaluating factual accuracy, unsupported claims, latency, and cost.
+## Deliberately excluded from the first release
 
-The first release will be deliberately small enough to finish and explain well. Product breadth is secondary to data quality, traceability, and engineering depth.
+- Accounts, profiles, real names, location, photographs, or camera access.
+- Open-ended chat, public galleries, social sharing, or communication between
+  users.
+- Advertising, purchases, subscriptions, streaks, or rankings.
+- Aesthetic grading, personality assessment, or claims about a child's
+  ability, emotions, or development.
+- Unbounded model input or output and provider-dependent core functionality.
 
-## Proposed MVP
-
-- Import one curated historical dataset, initially targeting roughly 10–20 matches.
-- Browse teams, matches, scorelines, lineups, and key events.
-- Present three core views: a shot map, an xG timeline, and a team/event comparison.
-- Support a small set of predefined analytical questions through an AI analyst.
-- Ground every numerical or factual answer in deterministic calculations and match evidence.
-- Make formulas, data coverage, omissions, and limitations visible.
-- Produce a shareable match summary without inventing statistics.
-
-## Explicitly out of scope
-
-- Live scores or real-time match tracking.
-- Betting, gambling advice, or outcome prediction.
-- Exhaustive league and season coverage.
-- Paid data feeds.
-- User accounts, social features, and collaboration in the first release.
-- Unlicensed club crests, player photographs, or broadcast footage.
-- Claims that the product replaces a professional analyst or scout.
-
-## Proposed stack
-
-- Next.js, React, TypeScript, and Tailwind CSS
-- Accessible SVG or a lightweight charting layer for pitch and timeline views
-- Python and FastAPI for ingestion, analytics, and model orchestration
-- PostgreSQL for normalized match, lineup, event, and derived-metric data
-- An LLM provider selected only after the deterministic analytics slice works
-- Version-controlled fixtures and evaluation cases
-
-Final provider, library, and hosting choices require technical validation before implementation.
-
-## Data and attribution
-
-The proposed primary source is [StatsBomb Open Data](https://github.com/hudl/open-data), which makes selected historical football data available for research and genuine interest in football analytics.
-
-StatsBomb requires published analysis based on its open data to identify StatsBomb as the data source and use its logo. MatchLens will preserve that attribution in the product and documentation. Attribution is credit, not a payment. The exact dataset and distribution approach must be reviewed against the current source terms before data is committed or deployed.
-
-## Initial roadmap
-
-1. Select one legally usable open dataset and freeze the initial scope.
-2. Define source provenance, normalized schemas, and metric formulas.
-3. Build an idempotent importer with validation and small test fixtures.
-4. Deliver one match page with deterministic visualisations.
-5. Add a narrowly scoped, evidence-backed AI analyst.
-6. Evaluate correctness and usability before expanding coverage.
-
+The exact age range, mission design, local-versus-remote inference boundary,
+fallback behavior, technology stack, and release scope must be settled in a
+reviewed implementation plan before development begins.

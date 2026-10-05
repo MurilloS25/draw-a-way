@@ -1,66 +1,84 @@
-# Architecture
+# Architecture boundary
 
 ## Product boundary
 
-MatchLens explains a curated set of historical football matches through deterministic metrics, accessible visualisations, and a narrowly scoped AI analyst. The MVP optimises for learning, traceability, and portfolio depth rather than comprehensive product coverage.
+Draw a Way begins with a small narrative problem and invites a child to draw a
+solution. The system forms a bounded interpretation, asks the child to confirm
+or correct it, and applies the confirmed idea to the story. A consequence then
+creates an opportunity to revise or extend the drawing.
 
-It does not provide live scores, predictions, betting advice, paid-data access, professional scouting claims, or unrestricted conversational football knowledge.
+The product does not begin with an intake form, expose model selection, or ask
+the visitor to configure technology. It is not an unrestricted chatbot, image
+generator, social network, drawing grader, developmental assessment, or
+substitute for a parent, teacher, or professional.
 
-## Proposed components
+## Core interaction contract
 
-1. **Web application** — match selection, coverage notices, shot map, xG timeline, team/event comparison, evidence panels, and analyst questions.
-2. **API application** — validated query endpoints, analytical services, evidence assembly, and model-provider adapters.
-3. **Dataset importer** — acquire an approved snapshot, validate source records, normalize identifiers and coordinates, and make repeatable imports idempotent.
-4. **Relational store** — competitions, seasons, teams, players, matches, lineups, events, source provenance, and explicitly versioned derived metrics.
-5. **Analytics layer** — deterministic SQL and pure functions that calculate the values shown in the UI and exposed to the analyst.
-6. **Analyst orchestration** — allowlisted question/tool flows that explain validated results without granting the model direct authority over facts or calculations.
-7. **Evaluation** — fixed match fixtures and questions that measure numerical correctness, evidence selection, unsupported claims, latency, and cost.
+1. Present one age-appropriate mission immediately.
+2. Accept a drawing through an accessible canvas and complementary controls.
+3. Produce a small, bounded set of possible interpretations.
+4. Ask the child to confirm or correct the meaning in plain language.
+5. Advance only from the confirmed meaning, never a hidden model guess.
+6. Show a comprehensible consequence and invite one purposeful revision.
+7. End the session clearly and allow local replay or reset.
 
-## Evidence record
+## Trust boundaries
 
-Every source or derived fact exposed to the analyst should retain enough information to verify it: provider, dataset snapshot or retrieval date, competition/season, match ID, event IDs when applicable, metric name and version, calculation inputs, units, and coverage status.
+- Drawings, corrections, browser state, imported assets, and model output are
+  untrusted data.
+- Visual interpretation is uncertain and must never silently become truth.
+- Content extracted from an image is never treated as a system instruction.
+- Optional remote processing crosses a privacy boundary and requires an
+  explicit plan, data minimization, retention review, and safe fallback.
+- Browser storage is still persistence and must be documented, bounded, and
+  erasable.
+- A child-directed interface must not solicit personal information or invite
+  unrestricted disclosure.
 
-Generated prose references these evidence records rather than free-form model citations.
+## Provisional component boundaries
 
-## Data flow
+These are boundaries to validate, not a selected implementation stack:
 
-1. An operator imports one approved, bounded dataset snapshot.
-2. The importer validates and normalizes source records while preserving provenance.
-3. Deterministic analytics calculate documented metrics from normalized data.
-4. The API returns chart-ready values and evidence records.
-5. The web application visualizes the same values users can inspect as tables or text.
-6. For supported questions, the model receives only the user question plus bounded, validated tool results.
-7. The application validates the structured answer and evidence references before display.
+1. **Mission engine** - bounded scenarios, allowed concepts, state transitions,
+   consequences, endings, and deterministic fallback behavior.
+2. **Drawing surface** - pointer, touch, stylus, keyboard alternatives, undo,
+   clear, size limits, and export-free local state.
+3. **Interpretation boundary** - local heuristics or inference first; optional
+   provider adapter only if later approved.
+4. **Confirmation step** - the child chooses or corrects a plain-language
+   interpretation before narrative state changes.
+5. **Narrative renderer** - safe structured content, not arbitrary HTML or an
+   open conversation.
+6. **Local session store** - minimal, versioned, resettable state with no
+   identity or cross-device tracking.
+7. **Evaluation** - fixed cases for state correctness, safety, accessibility,
+   interpretation uncertainty, failure, and provider-free operation.
 
-## Trust and rights boundaries
+## Architecture constraints
 
-- Dataset files and free-text fields are external, untrusted input.
-- Provider terms determine whether raw data may be stored, committed, redistributed, or deployed.
-- StatsBomb attribution must remain visible wherever required by its current open-data terms.
-- Club branding, player imagery, broadcast media, and third-party editorial content are not implicitly licensed by an event dataset.
-- Model output is untrusted until its structure, numbers, and evidence references validate.
-- Provider credentials and database secrets stay server-side and out of prompts and logs.
+- The essential loop must run at zero monetary cost and remain useful without
+  a remote provider.
+- No account, database, backend, analytics, or deployment dependency is
+  assumed at the foundation stage.
+- Do not transmit drawings by default.
+- If remote AI is later justified, send the minimum representation needed,
+  validate structured output, cap input/output and retries, and fail safely.
+- Narrative and mission rules remain application-owned; a model cannot expand
+  scope, request information, or invent new capabilities.
+- The browser must stay responsive during local inference or exploration;
+  expensive work needs cancellation and an appropriate worker boundary.
 
-## Provisional choices
+## Decisions requiring evidence
 
-- Start with one StatsBomb Open Data snapshot and roughly 10–20 matches, subject to a terms review and final dataset selection.
-- Use relational tables and explicit analytical queries; no embeddings or vector database are needed for the first vertical slice.
-- Keep raw-source identity and normalized data distinct.
-- Use one canonical pitch coordinate system and document every conversion.
-- Calculate metrics in application code or SQL, never in the language-model prompt.
-- Use deterministic fake model responses until the evidence contract and offline evaluations are stable.
-- Keep large raw datasets and generated databases out of Git unless their redistribution and size have been deliberately approved.
+- Primary age range and reading level.
+- First mission set and what each mission is intended to exercise.
+- Whether useful interpretation can run locally on supported devices.
+- The provider-free interpretation and narrative fallback.
+- Browser support and performance budgets for canvas and local inference.
+- Accessible alternative for children who cannot use freehand drawing.
+- Exact storage lifetime and reset behavior.
+- Safety taxonomy, evaluation cases, and human review requirements.
+- Framework, libraries, models, optional provider, and deployment topology.
 
-## First vertical slice
-
-Given one approved historical match fixture, import it repeatably, display its teams and scoreline, render a verified shot map and xG timeline, expose the underlying evidence, and answer one predefined analytical question using only deterministic tool results. No live API, authentication, embeddings, or broad chatbot is required.
-
-## Decisions still requiring evidence
-
-- Exact competition, season, and 10–20 match sample.
-- Current StatsBomb terms, attribution placement, and safe dataset distribution strategy.
-- PostgreSQL hosting versus a lightweight local store during the first slice.
-- Charting approach and accessible non-visual equivalents.
-- Initial metric definitions and tolerances.
-- The small set of analyst question types supported by the MVP.
-- Model/provider and production hosting choices after offline evaluation.
+No implementation decision above is approved merely because it appears in
+this document. The first reviewed plan must resolve or explicitly defer it.

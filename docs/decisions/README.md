@@ -2,6 +2,10 @@
 
 Record decisions that constrain future work or are expensive to reverse. Routine implementation choices do not need an ADR.
 
+For Draw a Way, record choices that alter child agency, privacy, storage,
+content safety, interpretation, provider boundaries, accessibility, cost, or
+the essential fallback experience.
+
 ```markdown
 # Decision title
 
