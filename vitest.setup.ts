@@ -13,3 +13,10 @@ afterEach(async () => {
   }
   vi.stubGlobal("fetch", blockedFetch);
 });
+
+// jsdom has no canvas; provide a harmless 2D context so components can mount.
+if (typeof HTMLCanvasElement !== "undefined") {
+  const noop = () => undefined;
+  const ctx = new Proxy({}, { get: () => noop, set: () => true });
+  HTMLCanvasElement.prototype.getContext = (() => ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+}

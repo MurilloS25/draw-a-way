@@ -86,7 +86,10 @@ export function Game() {
   }, []);
 
   useEffect(() => {
-    if (hydrated) saveSession(state);
+    if (!hydrated) return;
+    // Nothing worth keeping before a drawing starts: store nothing.
+    if (state.phase === "intro") clearAllLocalData();
+    else saveSession(state);
   }, [state, hydrated]);
 
   // Stage changes: announce, move focus to the new heading, reset transient UI.
