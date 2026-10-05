@@ -1,19 +1,25 @@
-import { candidatesFor, isCandidate, isMissionId, nextMissionId, type Round } from "../missions/engine";
-import type { MissionId } from "../missions/types";
+import { normalizeCapabilities, sanitizeLabel, type CapabilityOrUnknown } from "../capabilities";
 import { canAddStroke, type Stroke } from "../drawing/model";
+import {
+  isMissionId,
+  nextMissionId,
+  SCENE_COUNT,
+  type Decision,
+  type SceneIndex,
+} from "../missions/engine";
+import type { MissionId } from "../missions/types";
 
-export type Phase = "intro" | "draw" | "confirm" | "consequence" | "summary";
+export type Phase = "intro" | "draw" | "describe" | "result" | "summary";
 
 export interface SessionState {
   missionId: MissionId;
-  round: Round;
+  scene: SceneIndex;
   phase: Phase;
+  /** Every scene's strokes, each tagged with its scene. Backdrops are never stored. */
   strokes: Stroke[];
-  /** Confirmed idea (round 1). Only ever set from the mission's own ideas. */
-  ideaId?: string;
-  /** Confirmed refinement (round 2). */
-  refinementId?: string;
-  /** True when the child chose an idea without drawing. */
+  /** One confirmed decision per finished scene (plus the current one in "result"). */
+  decisions: Decision[];
+  /** The child chose capabilities without drawing in the current scene. */
   skippedDrawing: boolean;
 }
 
@@ -24,18 +30,19 @@ export type Action =
   | { type: "finishDrawing" }
   | { type: "chooseWithoutDrawing" }
   | { type: "backToDrawing" }
-  | { type: "confirm"; candidateId: string }
-  | { type: "revise" }
+  | { type: "confirm"; caps: CapabilityOrUnknown[]; label?: string | null }
+  | { type: "nextScene" }
   | { type: "seeSummary" }
   | { type: "replay" }
   | { type: "nextMission" };
 
 export function initialState(missionId: MissionId = "river"): SessionState {
-  return { missionId, round: 1, phase: "intro", strokes: [], skippedDrawing: false };
+  return { missionId, scene: 0, phase: "intro", strokes: [], decisions: [], skippedDrawing: false };
 }
 
-export function currentCandidates(state: SessionState) {
-  return candidatesFor(state.missionId, state.round, state.ideaId);
+/** Decisions that came before the current scene. */
+export function priorDecisions(state: SessionState): Decision[] {
+  return state.decisions.slice(0, state.scene);
 }
 
 /** Pure, total transition function. Invalid actions return the same state. */
@@ -46,30 +53,35 @@ export function reduce(state: SessionState, action: Action): SessionState {
       return initialState(action.missionId);
     case "startDrawing":
       return state.phase === "intro" ? { ...state, phase: "draw" } : state;
-    case "setStrokes":
+    case "setStrokes": {
       if (state.phase !== "draw") return state;
-      return { ...state, strokes: action.strokes };
+      const earlier = state.strokes.filter((s) => s.s < state.scene);
+      const next = action.strokes;
+      const keptEarlier = next.filter((s) => s.s < state.scene);
+      if (next.some((s) => s.s > state.scene)) return state;
+      if (keptEarlier.length !== earlier.length || keptEarlier.some((s, i) => s !== earlier[i])) return state;
+      return { ...state, strokes: next };
+    }
     case "finishDrawing":
-      return state.phase === "draw" ? { ...state, phase: "confirm" } : state;
+      return state.phase === "draw" ? { ...state, phase: "describe" } : state;
     case "chooseWithoutDrawing":
       return state.phase === "draw"
-        ? { ...state, phase: "confirm", skippedDrawing: !state.strokes.some((s) => s.r === state.round) }
+        ? { ...state, phase: "describe", skippedDrawing: !state.strokes.some((s) => s.s === state.scene) }
         : state;
     case "backToDrawing":
-      return state.phase === "confirm" ? { ...state, phase: "draw", skippedDrawing: false } : state;
+      return state.phase === "describe" ? { ...state, phase: "draw", skippedDrawing: false } : state;
     case "confirm": {
-      if (state.phase !== "confirm") return state;
-      if (!isCandidate(state.missionId, state.round, state.ideaId, action.candidateId)) return state;
-      return state.round === 1
-        ? { ...state, phase: "consequence", ideaId: action.candidateId }
-        : { ...state, phase: "consequence", refinementId: action.candidateId };
+      if (state.phase !== "describe") return state;
+      const caps = normalizeCapabilities(action.caps);
+      if (!caps) return state;
+      const decision: Decision = { caps, label: sanitizeLabel(action.label), skipped: state.skippedDrawing };
+      return { ...state, phase: "result", decisions: [...priorDecisions(state), decision] };
     }
-    case "revise":
-      if (state.phase !== "consequence" || state.round !== 1 || !state.ideaId) return state;
-      return { ...state, round: 2, phase: "draw", skippedDrawing: false };
+    case "nextScene":
+      if (state.phase !== "result" || state.scene >= SCENE_COUNT - 1) return state;
+      return { ...state, scene: (state.scene + 1) as SceneIndex, phase: "draw", skippedDrawing: false };
     case "seeSummary":
-      if (state.phase !== "consequence" || state.round !== 2 || !state.refinementId) return state;
-      return { ...state, phase: "summary" };
+      return state.phase === "result" && state.scene === SCENE_COUNT - 1 ? { ...state, phase: "summary" } : state;
     case "replay":
       return state.phase === "summary" ? initialState(state.missionId) : state;
     case "nextMission":

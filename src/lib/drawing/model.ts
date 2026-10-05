@@ -31,7 +31,10 @@ export const WIDTHS = [
 export const StrokeSchema = z.object({
   c: z.number().int().min(0).max(PALETTE.length - 1),
   w: z.number().int().min(0).max(WIDTHS.length - 1),
-  r: z.union([z.literal(1), z.literal(2)]),
+  /** Scene the stroke belongs to (0-2). */
+  s: z.number().int().min(0).max(2),
+  /** Average stylus pressure 0-100, only when a pen reported it. */
+  pr: z.number().int().min(1).max(100).optional(),
   p: z
     .array(z.number().int())
     .min(2)
@@ -52,6 +55,12 @@ export const StrokesSchema = z
     (s) => s.reduce((n, st) => n + st.p.length / 2, 0) <= LIMITS.maxTotalPoints,
     "too many points",
   );
+
+/** Stroke width in logical units; a pen with pressure thickens or thins it a little. */
+export function strokeWidthPx(stroke: Pick<Stroke, "w" | "pr">): number {
+  const base = WIDTHS[stroke.w]?.px ?? WIDTHS[1].px;
+  return stroke.pr ? base * (0.6 + 0.8 * (stroke.pr / 100)) : base;
+}
 
 export function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));

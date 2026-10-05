@@ -1,23 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { Backdrop, motionFor } from "./Backdrop";
+import { CapabilityPicker } from "./CapabilityPicker";
 import { DrawingCanvas } from "./DrawingCanvas";
-import { Scene } from "./Scene";
-import { StrokesSvg } from "./StrokesSvg";
+import { PersistentSvg, StrokesSvg } from "./StrokesSvg";
 import { Summary } from "./Summary";
 import { Trail } from "./Trail";
+import { describeCapabilities, normalizeCapabilities, thingName, type Capability, type CapabilityOrUnknown } from "@/lib/capabilities";
+import { companionAt, persistentLayers } from "@/lib/drawing/layers";
+import { exportCompositeBase64 } from "@/lib/drawing/render";
+import type { Stroke } from "@/lib/drawing/model";
 import { fetchCapabilities, requestInterpretation, type Capabilities } from "@/lib/interpret/client";
 import type { FallbackReason } from "@/lib/interpret/types";
 import {
   MISSION_IDS,
-  consequenceFor,
-  endingFor,
-  getIdea,
   getMission,
+  getScene,
+  keepNote,
+  recallLines,
+  resolveScene,
+  sceneStory,
+  startMood,
+  type SceneIndex,
 } from "@/lib/missions/engine";
-import { clearAllLocalData, loadSession, saveSession } from "@/lib/session/storage";
-import { currentCandidates, initialState, reduce, type Action, type Phase, type SessionState } from "@/lib/session/state";
-import type { Stroke } from "@/lib/drawing/model";
+import {
+  clearAllLocalData,
+  loadSession,
+  readEnvelope,
+  sameState,
+  saveSession,
+  SESSION_KEY,
+} from "@/lib/session/storage";
+import { initialState, priorDecisions, reduce, type Action, type Phase, type SessionState } from "@/lib/session/state";
 
 type GameAction = Action | { type: "restore"; state: SessionState } | { type: "reset" };
 
@@ -30,7 +45,7 @@ function gameReducer(state: SessionState, action: GameAction): SessionState {
 type Helper =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "suggested"; candidateId: string }
+  | { status: "suggested"; caps: Capability[]; label: string | null }
   | { status: "failed"; reason: FallbackReason };
 
 const FAILURE_COPY: Record<FallbackReason, string> = {
@@ -42,18 +57,26 @@ const FAILURE_COPY: Record<FallbackReason, string> = {
   unsure: "The helper was not sure what this is.",
 };
 
-function stepAnnouncement(phase: Phase, round: 1 | 2, title: string): string {
+function stepAnnouncement(phase: Phase, scene: number, title: string): string {
   switch (phase) {
     case "intro":
-      return `Mission: ${title}.`;
+      return `Adventure: ${title}.`;
     case "draw":
-      return round === 1 ? "Step 2 of 4. Draw your idea." : "Step 2 of 4. Draw a change.";
-    case "confirm":
-      return round === 1 ? "Step 3 of 4. Tell us what you made." : "Step 3 of 4. Tell us what you changed.";
-    case "consequence":
-      return "Step 4 of 4. See what happens.";
+      return `Scene ${scene + 1} of 3. Draw your idea.`;
+    case "describe":
+      return `Scene ${scene + 1} of 3. Say what your idea does.`;
+    case "result":
+      return `Scene ${scene + 1} of 3. See what happens.`;
     case "summary":
-      return "Your story trail.";
+      return "Your adventure trail.";
+  }
+}
+
+function newTabId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `t${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
   }
 }
 
@@ -62,22 +85,36 @@ export function Game() {
   const [hydrated, setHydrated] = useState(false);
   const [caps, setCaps] = useState<Capabilities>({ remote: false, source: null });
   const [helper, setHelper] = useState<Helper>({ status: "idle" });
-  const [selected, setSelected] = useState<string | null>(null);
+  const [picked, setPicked] = useState<CapabilityOrUnknown[]>([]);
+  const [editing, setEditing] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState<null | "replay" | "next">(null);
+  const [conflict, setConflict] = useState<null | { other: SessionState | null }>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const conflictRef = useRef<HTMLButtonElement>(null);
+  const paperColRef = useRef<HTMLElement>(null);
   const lastKey = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const tabId = useRef("");
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const mission = getMission(state.missionId);
+  const scene = state.scene;
+  const sceneDef = getScene(state.missionId, scene);
+  const prior = priorDecisions(state);
   const announce = useCallback((m: string) => setAnnouncement(m), []);
 
   // Restore an interrupted session, then learn whether an explicit helper exists.
   useEffect(() => {
+    tabId.current = newTabId();
     const saved = loadSession();
     if (saved) {
       dispatch({ type: "restore", state: saved });
-      lastKey.current = `${saved.missionId}-${saved.phase}-${saved.round}`;
+      lastKey.current = `${saved.missionId}-${saved.phase}-${saved.scene}`;
+      setAnnouncement("Welcome back. Your adventure is still here.");
     }
     setHydrated(true);
     const controller = new AbortController();
@@ -85,19 +122,44 @@ export function Game() {
     return () => controller.abort();
   }, []);
 
+  // Save after every step once drawing has started. Saving pauses while another tab's change is unresolved.
   useEffect(() => {
-    if (!hydrated) return;
-    // Nothing worth keeping before a drawing starts: store nothing.
-    if (state.phase === "intro") clearAllLocalData();
-    else saveSession(state);
-  }, [state, hydrated]);
+    if (!hydrated || conflict || state.phase === "intro") return;
+    setSaveFailed(!saveSession(state, tabId.current));
+  }, [state, hydrated, conflict]);
+
+  // Another tab wrote (or erased) the session: never overwrite silently, never merge strokes.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== null && e.key !== SESSION_KEY) return;
+      const env = e.newValue ? readEnvelope(e.newValue) : null;
+      if (env && env.writer === tabId.current) return;
+      const mine = stateRef.current;
+      if (mine.phase === "intro") {
+        if (env) dispatch({ type: "restore", state: env.state });
+        return;
+      }
+      if (env && sameState(env.state, mine)) return;
+      if (!env && e.newValue !== null) return; // unreadable write: ignore, we keep ours
+      setConflict({ other: env ? env.state : null });
+      setAnnouncement("Another tab changed this adventure. Choose which version to keep.");
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (conflict) conflictRef.current?.focus();
+  }, [conflict]);
 
   // Stage changes: announce, move focus to the new heading, reset transient UI.
   useEffect(() => {
-    const key = `${state.missionId}-${state.phase}-${state.round}`;
+    const key = `${state.missionId}-${state.phase}-${state.scene}`;
     if (!hydrated) return;
-    setSelected(null);
+    setPicked([]);
+    setEditing(false);
     setHelper({ status: "idle" });
+    setConfirmLeave(null);
     abortRef.current?.abort();
     abortRef.current = null;
     if (lastKey.current === null) {
@@ -106,9 +168,9 @@ export function Game() {
     }
     if (lastKey.current === key) return;
     lastKey.current = key;
-    setAnnouncement(stepAnnouncement(state.phase, state.round, mission.title));
+    setAnnouncement(stepAnnouncement(state.phase, state.scene, mission.title));
     headingRef.current?.focus({ preventScroll: false });
-  }, [state.missionId, state.phase, state.round, hydrated, mission.title]);
+  }, [state.missionId, state.phase, state.scene, hydrated, mission.title]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -122,36 +184,52 @@ export function Game() {
 
   const setStrokes = useCallback((strokes: Stroke[]) => dispatch({ type: "setStrokes", strokes }), []);
 
+  const currentStrokes = state.strokes.filter((s) => s.s === scene);
+  const layers = persistentLayers(state.missionId, state.decisions, state.strokes, scene);
+  const compAt = companionAt(state.missionId, scene);
+
   const askHelper = async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setHelper({ status: "loading" });
-    setAnnouncement("The helper is looking at your drawing.");
+    setAnnouncement("The helper is looking at your picture.");
     let timedOut = false;
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, 15000);
-    const result = await requestInterpretation(
-      { missionId: state.missionId, round: state.round, firstIdeaId: state.ideaId, strokes: state.strokes },
-      controller.signal,
-    );
+    const backdrop = paperColRef.current?.querySelector<SVGSVGElement>("svg.scene") ?? null;
+    const image = await exportCompositeBase64({
+      backdrop,
+      structure: layers.structure,
+      companion: layers.companion,
+      companionAt: compAt,
+      current: currentStrokes,
+    });
+    const result = image
+      ? await requestInterpretation(
+          {
+            missionId: state.missionId,
+            scene,
+            priorCaps: [...new Set(prior.flatMap((d) => d.caps.filter((c): c is Capability => c !== "unknown")))],
+            imageBase64: image,
+          },
+          controller.signal,
+        )
+      : ({ status: "fallback", reason: "unavailable" } as const);
     clearTimeout(timeout);
     // Ignore the answer if the child cancelled, moved on, or started over meanwhile.
     if (abortRef.current !== controller || (controller.signal.aborted && !timedOut)) return;
     abortRef.current = null;
-    const valid = result.status === "ok" && currentCandidates(state).some((c) => c.id === result.candidateId);
-    if (result.status === "ok" && valid) {
-      setHelper({ status: "suggested", candidateId: result.candidateId });
+    if (result.status === "ok") {
+      setHelper({ status: "suggested", caps: result.capabilities, label: result.label });
       setAnnouncement("The helper has a guess. Please check it.");
-      requestAnimationFrame(() => headingRef.current?.focus());
     } else {
-      const reason: FallbackReason = result.status === "fallback" ? result.reason : "invalid_response";
-      setHelper({ status: "failed", reason: timedOut ? "timeout" : reason });
-      setAnnouncement("The helper could not tell. Your drawing is safe. You can tell us what you made.");
-      requestAnimationFrame(() => headingRef.current?.focus());
+      setHelper({ status: "failed", reason: timedOut ? "timeout" : result.reason });
+      setAnnouncement("The helper could not tell. Your drawing is safe. You can tell us what your idea does.");
     }
+    requestAnimationFrame(() => headingRef.current?.focus());
   };
 
   const cancelHelper = () => {
@@ -167,25 +245,65 @@ export function Game() {
     clearAllLocalData();
     dispatch({ type: "reset" });
     setConfirmingReset(false);
-    lastKey.current = "river-intro-1";
+    setConflict(null);
+    lastKey.current = "river-intro-0";
     setAnnouncement("Everything was erased. Starting fresh.");
     headingRef.current?.focus();
   };
 
-  const candidates = currentCandidates(state);
-  const consequence = state.ideaId ? consequenceFor(state.missionId, state.ideaId) : undefined;
-  const ending =
-    state.ideaId && state.refinementId ? endingFor(state.missionId, state.ideaId, state.refinementId) : undefined;
-  const idea = state.ideaId ? getIdea(state.missionId, state.ideaId) : undefined;
-  const suggested =
-    helper.status === "suggested" ? candidates.find((c) => c.id === helper.candidateId) : undefined;
+  const leaveSummary = (kind: "replay" | "next") => {
+    clearAllLocalData();
+    dispatch({ type: kind === "replay" ? "replay" : "nextMission" });
+  };
 
+  const keepMine = () => {
+    setConflict(null);
+    setSaveFailed(!saveSession(stateRef.current, tabId.current));
+    setAnnouncement("Kept this tab's version.");
+  };
+  const useOther = () => {
+    const other = conflict?.other;
+    setConflict(null);
+    if (other) {
+      lastKey.current = `${other.missionId}-${other.phase}-${other.scene}`;
+      dispatch({ type: "restore", state: other });
+      setAnnouncement("Loaded the newest version.");
+    } else {
+      startOver();
+    }
+  };
+
+  const hero = mission.hero;
+  const suggested = helper.status === "suggested" && !editing ? helper : null;
+  const normalized = normalizeCapabilities(picked);
+  const needsPick = !normalized;
+  const needsLine = currentStrokes.length === 0;
+  const unsureHelper = helper.status === "failed" && helper.reason === "unsure";
+
+  const decision = state.decisions[scene];
+  const result =
+    state.phase === "result" && decision ? resolveScene(state.missionId, scene, prior, decision) : null;
+  const next = scene < 2 ? getScene(state.missionId, (scene + 1) as SceneIndex) : null;
   const showSummary = state.phase === "summary";
-  const needsLine = state.round === 1 && state.strokes.length === 0;
-  const confirmHeading = state.round === 1 ? "What did you make?" : "What did you change?";
+
+  const mood = result ? result.mood : startMood(state.missionId, scene, prior);
+  const backdrop = (
+    <Backdrop
+      missionId={state.missionId}
+      scene={scene}
+      mode={state.phase === "result" ? "result" : "idle"}
+      level={result?.level}
+      mood={mood}
+      motion={state.phase === "result" && decision ? motionFor(decision.caps) : "steady"}
+      playKey={`${scene}-${state.phase === "result" ? "r" : "i"}`}
+    />
+  );
+  const persistent = <PersistentSvg className="strokes-layer" layers={layers} companionAt={compAt} />;
+
+  const story = sceneStory(state.missionId, scene, prior);
 
   return (
-    <div className="shell" data-phase={state.phase} data-round={state.round} data-mission={state.missionId}>
+    <div className="shell" data-phase={state.phase} data-scene={scene} data-mission={state.missionId}>
       <header className="masthead">
         <p className="wordmark">
           Draw a Way
@@ -221,18 +339,42 @@ export function Game() {
         </div>
       </header>
 
+      {conflict && (
+        <div className="banner" role="alert" data-testid="tab-conflict">
+          <p>
+            <strong>Another tab changed this adventure.</strong>{" "}
+            {conflict.other
+              ? "It has a different version. Lines are never mixed together, so pick one."
+              : "It started over. Pick what happens here."}
+          </p>
+          <div className="banner-actions">
+            <button ref={conflictRef} type="button" className="btn small" onClick={keepMine}>
+              Keep what I have here
+            </button>
+            <button type="button" className="btn small" onClick={useOther}>
+              {conflict.other ? "Use the newest version" : "Start over here too"}
+            </button>
+          </div>
+        </div>
+      )}
+      {saveFailed && !conflict && (
+        <p className="fine banner-quiet" role="status">
+          This device could not keep your drawing for later. It is safe while this page stays open.
+        </p>
+      )}
+
       <main className="layout" id="main">
         <section className="note" aria-labelledby="stage-title">
-          <Trail phase={state.phase} round={state.round} />
+          <Trail phase={state.phase} scene={scene} />
 
           {state.phase === "intro" && (
             <>
               <h1 id="stage-title" ref={headingRef} tabIndex={-1}>
                 {mission.title}
               </h1>
-              <p className="story">{mission.story}</p>
-              <p className="goal">{mission.goal}</p>
-              <div className="picker" role="group" aria-label="Choose a mission">
+              <p className="story">{mission.scenes[0].story}</p>
+              <p className="goal">{mission.goal} Three short scenes.</p>
+              <div className="picker" role="group" aria-label="Choose an adventure">
                 {MISSION_IDS.map((id) => (
                   <button
                     key={id}
@@ -251,56 +393,50 @@ export function Game() {
           {state.phase === "draw" && (
             <>
               <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                {state.round === 1 ? "Draw your idea" : "Draw a change"}
+                Scene {scene + 1}: {sceneDef.title}
               </h2>
-              <p className="story">{state.round === 1 ? mission.drawPrompt : consequence?.complication}</p>
-              {state.round === 2 && <p className="goal">Add to your drawing, or keep it as it is.</p>}
+              <p className="story">{story}</p>
+              <p className="goal">{sceneDef.prompt}</p>
+              {prior.length > 0 && (
+                <div className="recall">
+                  <p className="fine">The story remembers:</p>
+                  <ul>
+                    {recallLines(state.missionId, prior).map((l) => (
+                      <li key={l}>{l}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
 
-          {state.phase === "confirm" && (
+          {state.phase === "describe" && (
             <>
               <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                {suggested ? "Is this what you meant?" : confirmHeading}
+                {suggested ? "Is this what you meant?" : unsureHelper ? "I'm not sure yet." : `What does your idea help ${hero} do?`}
               </h2>
               {suggested ? (
                 <p className="story">
-                  I think you made <strong>{suggested.label.toLowerCase()}</strong>. Is that what you meant?
+                  I think {thingName(suggested.label)} can {describeCapabilities(suggested.caps)}. Is that what you meant?
                 </p>
               ) : (
-                <p className="story">
-                  {state.skippedDrawing
-                    ? "Pick the idea you want to try."
-                    : "Nothing here looks at your drawing, so you tell us. Pick the idea that is closest to yours. If none fits, keep drawing."}
-                </p>
+                <>
+                  <p className="story">
+                    {unsureHelper
+                      ? `What does your idea help ${hero} do?`
+                      : state.skippedDrawing
+                        ? "Pick up to two things your idea can do."
+                        : "Nothing here looks at your drawing, so you tell us. Pick up to two things your idea can do."}
+                  </p>
+                  <CapabilityPicker selected={picked} onChange={setPicked} disabled={helper.status === "loading"} />
+                </>
               )}
 
-              {!suggested && (
-                <fieldset className="choices" disabled={helper.status === "loading"}>
-                  <legend className="sr-only">{confirmHeading}</legend>
-                  {candidates.map((c) => (
-                    <label key={c.id} className="choice">
-                      <input
-                        type="radio"
-                        name="idea"
-                        value={c.id}
-                        checked={selected === c.id}
-                        onChange={() => setSelected(c.id)}
-                      />
-                      <span className="choice-body">
-                        <span className="choice-label">{c.label}</span>
-                        <span className="choice-hint">{c.hint}</span>
-                      </span>
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-
-              {caps.remote && !state.skippedDrawing && state.strokes.length > 0 && !suggested && (
+              {caps.remote && !state.skippedDrawing && currentStrokes.length > 0 && !suggested && (
                 <div className="helper">
                   {helper.status === "loading" ? (
                     <>
-                      <p role="status">The helper is looking at your drawing…</p>
+                      <p role="status">The helper is looking at your picture…</p>
                       <button type="button" className="btn small" onClick={cancelHelper}>
                         Cancel
                       </button>
@@ -308,15 +444,15 @@ export function Game() {
                   ) : (
                     <>
                       <p className="fine" id="helper-note">
-                        This sends a small black-and-white copy of your lines to an online helper. We do not keep it,
-                        and the helper service may keep it for a short time.
+                        This sends a small copy of the scene and your lines to an online helper. We do not keep it, and the
+                        helper service may keep it for a short time. You always decide what your idea does.
                       </p>
                       <button type="button" className="btn small" onClick={askHelper} aria-describedby="helper-note">
                         Ask the helper to look
                       </button>
-                      {helper.status === "failed" && (
+                      {helper.status === "failed" && !unsureHelper && (
                         <p className="fine alert" role="status">
-                          {FAILURE_COPY[helper.reason]} Your drawing is safe. Tell us what you made instead.
+                          {FAILURE_COPY[helper.reason]} Your drawing is safe. Tell us what your idea does instead.
                         </p>
                       )}
                     </>
@@ -326,65 +462,56 @@ export function Game() {
             </>
           )}
 
-          {state.phase === "consequence" && state.round === 1 && consequence && idea && (
+          {state.phase === "result" && result && decision && (
             <>
               <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                Your idea: {idea.label.toLowerCase()}
+                Here is what happens
               </h2>
-              <p className="story">{consequence.text}</p>
-              <p className="goal">{consequence.complication}</p>
-            </>
-          )}
-
-          {state.phase === "consequence" && state.round === 2 && ending && (
-            <>
-              <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                The story ends
-              </h2>
-              <p className="story">{ending.text}</p>
+              <p className="story">{result.text}</p>
+              <p className="goal">{keepNote(state.missionId, scene, prior, decision)}</p>
+              {next && <p className="fine">Next scene: {next.title}.</p>}
             </>
           )}
 
           {showSummary && (
             <>
               <h2 id="stage-title" ref={headingRef} tabIndex={-1}>
-                Your story trail
+                Your adventure trail
               </h2>
-              <p className="story">{mission.goal} You tried it, changed it, and saw what happened.</p>
-              {ending && <p className="goal">{ending.text}</p>}
+              <p className="story">{mission.goal} You made three ideas, and the story answered each one.</p>
             </>
           )}
         </section>
 
-        <section className="paper-col" aria-label="Story picture">
+        <section className="paper-col" aria-label="Story picture" ref={paperColRef}>
           {showSummary ? (
             <Summary state={state} />
           ) : state.phase === "draw" ? (
             <DrawingCanvas
-                  strokes={state.strokes}
-                  round={state.round}
-                  onChange={setStrokes}
-                  onAnnounce={announce}
-                  scene={<Scene missionId={state.missionId} mode="idle" />}
-                />
+              key={`${state.missionId}-${scene}`}
+              strokes={state.strokes}
+              scene={scene}
+              onChange={setStrokes}
+              onAnnounce={announce}
+              layers={
+                <>
+                  {backdrop}
+                  {persistent}
+                </>
+              }
+            />
           ) : (
             <div className="paper">
-              <>
-                  <Scene
-                    missionId={state.missionId}
-                    mode={state.phase === "consequence" ? "result" : "idle"}
-                    motion={(idea?.motion ?? "steady")}
-                    playKey={`${state.round}-${state.phase}`}
-                  />
-                  <StrokesSvg strokes={state.strokes} className="strokes-layer" />
-              </>
+              {backdrop}
+              {persistent}
+              <StrokesSvg strokes={currentStrokes} className="strokes-layer" />
             </div>
           )}
           {state.phase !== "draw" && !showSummary && (
             <p className="sr-only">
-              {mission.sceneAlt}{" "}
-              {state.strokes.length
-                ? `Your drawing has ${state.strokes.length} ${state.strokes.length === 1 ? "line" : "lines"}.`
+              {sceneDef.sceneAlt}{" "}
+              {currentStrokes.length
+                ? `Your drawing has ${currentStrokes.length} ${currentStrokes.length === 1 ? "line" : "lines"}.`
                 : "You chose without drawing."}
             </p>
           )}
@@ -409,27 +536,34 @@ export function Game() {
               </button>
               {needsLine && (
                 <p className="fine hint" id="action-hint">
-                  Draw a line first, or choose an idea without drawing.
+                  Draw a line first, or choose what your idea does without drawing.
                 </p>
               )}
               <button type="button" className="btn" onClick={() => dispatch({ type: "chooseWithoutDrawing" })}>
-                Choose an idea without drawing
+                Choose without drawing
               </button>
             </>
           )}
-          {state.phase === "confirm" && (
+          {state.phase === "describe" && (
             <>
               {suggested ? (
                 <>
                   <button
                     type="button"
                     className="btn primary"
-                    onClick={() => dispatch({ type: "confirm", candidateId: suggested.id })}
+                    onClick={() => dispatch({ type: "confirm", caps: suggested.caps, label: suggested.label })}
                   >
                     Yes, that&apos;s it
                   </button>
-                  <button type="button" className="btn" onClick={() => setHelper({ status: "idle" })}>
-                    No, I&apos;ll choose
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setPicked(suggested.caps);
+                      setEditing(true);
+                    }}
+                  >
+                    No, let me change it
                   </button>
                 </>
               ) : (
@@ -437,43 +571,54 @@ export function Game() {
                   <button
                     type="button"
                     className="btn primary"
-                    aria-disabled={!selected}
-                    aria-describedby={!selected ? "action-hint" : undefined}
-                    onClick={() => selected && dispatch({ type: "confirm", candidateId: selected })}
+                    aria-disabled={needsPick}
+                    aria-describedby={needsPick ? "action-hint" : undefined}
+                    onClick={() => normalized && dispatch({ type: "confirm", caps: normalized })}
                   >
-                    That&apos;s my idea
+                    That&apos;s what it does
                   </button>
-                  {!selected && (
+                  {needsPick && (
                     <p className="fine hint" id="action-hint">
-                      Pick one idea first.
+                      Pick one or two things first.
                     </p>
                   )}
                   <button type="button" className="btn" onClick={() => dispatch({ type: "backToDrawing" })}>
-                    {state.skippedDrawing ? "Draw instead" : "None fit. Keep drawing"}
+                    {state.skippedDrawing ? "Draw instead" : "Keep drawing"}
                   </button>
                 </>
               )}
             </>
           )}
-          {state.phase === "consequence" && state.round === 1 && (
-            <button type="button" className="btn primary" onClick={() => dispatch({ type: "revise" })}>
-              Try a change
+          {state.phase === "result" && next && (
+            <button type="button" className="btn primary" onClick={() => dispatch({ type: "nextScene" })}>
+              Next scene
             </button>
           )}
-          {state.phase === "consequence" && state.round === 2 && (
+          {state.phase === "result" && !next && (
             <button type="button" className="btn primary" onClick={() => dispatch({ type: "seeSummary" })}>
-              See my story trail
+              See my adventure
             </button>
           )}
-          {showSummary && (
+          {showSummary && !confirmLeave && (
             <>
-              <button type="button" className="btn primary" onClick={() => dispatch({ type: "nextMission" })}>
-                Try another mission
+              <button type="button" className="btn primary" onClick={() => setConfirmLeave("next")}>
+                Try another adventure
               </button>
-              <button type="button" className="btn" onClick={() => dispatch({ type: "replay" })}>
-                Play this mission again
+              <button type="button" className="btn" onClick={() => setConfirmLeave("replay")}>
+                Play this adventure again
               </button>
             </>
+          )}
+          {showSummary && confirmLeave && (
+            <div className="confirm-row" role="group" aria-label="Clear this adventure?">
+              <span>This clears your drawings from this adventure. Keep going?</span>
+              <button type="button" className="btn small danger" onClick={() => leaveSummary(confirmLeave)}>
+                {confirmLeave === "replay" ? "Yes, clear them and play again" : "Yes, clear them and go on"}
+              </button>
+              <button type="button" className="btn small" onClick={() => setConfirmLeave(null)}>
+                Not yet
+              </button>
+            </div>
           )}
         </div>
       </main>

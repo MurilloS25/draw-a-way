@@ -1,21 +1,22 @@
 import { z } from "zod";
-import { isCandidate, isMissionId, type Round } from "../missions/engine";
+import { CapabilitySchema, type Capability } from "../capabilities";
+import { isMissionId, isSceneIndex, type SceneIndex } from "../missions/engine";
 import type { MissionId } from "../missions/types";
 import { INTERPRET_LIMITS } from "./config";
 
 const RequestSchema = z
   .object({
     missionId: z.string().max(32),
-    round: z.union([z.literal(1), z.literal(2)]),
-    firstIdeaId: z.string().max(40).optional(),
+    scene: z.number().int().min(0).max(2),
+    priorCaps: z.array(CapabilitySchema).max(6).optional(),
     imageBase64: z.string().min(16).max(INTERPRET_LIMITS.maxBodyChars),
   })
   .strict();
 
 export interface ValidRequest {
   missionId: MissionId;
-  round: Round;
-  firstIdeaId?: string;
+  scene: SceneIndex;
+  priorCaps: Capability[];
   imageBase64: string;
 }
 
@@ -47,11 +48,11 @@ export function validateRequest(rawText: string): RequestCheck {
   }
   const parsed = RequestSchema.safeParse(json);
   if (!parsed.success) return { ok: false, status: 400 };
-  const { missionId, round, firstIdeaId, imageBase64 } = parsed.data;
+  const { missionId, scene, priorCaps = [], imageBase64 } = parsed.data;
 
-  if (!isMissionId(missionId)) return { ok: false, status: 400 };
-  if (round === 2 && !isCandidate(missionId, 1, undefined, firstIdeaId)) return { ok: false, status: 400 };
-  if (round === 1 && firstIdeaId !== undefined) return { ok: false, status: 400 };
+  if (!isMissionId(missionId) || !isSceneIndex(scene)) return { ok: false, status: 400 };
+  if (new Set(priorCaps).size !== priorCaps.length) return { ok: false, status: 400 };
+  if (scene === 0 && priorCaps.length > 0) return { ok: false, status: 400 };
   if (imageBase64.length % 4 !== 0 || !BASE64.test(imageBase64)) return { ok: false, status: 400 };
 
   const approxBytes = Math.floor((imageBase64.length * 3) / 4);
@@ -69,5 +70,5 @@ export function validateRequest(rawText: string): RequestCheck {
   if (size.width < lo || size.height < lo || size.width > hi || size.height > hi) {
     return { ok: false, status: 400 };
   }
-  return { ok: true, value: { missionId, round, firstIdeaId, imageBase64 } };
+  return { ok: true, value: { missionId, scene, priorCaps, imageBase64 } };
 }

@@ -1,223 +1,377 @@
 import type { Mission } from "./types";
 
 /**
- * Application-owned story content. A model or a drawing can only ever select
- * one of these ids; it can never add, change, or extend the text.
+ * Application-owned story content. Drawings and models can only ever select
+ * capabilities from the fixed taxonomy; they never add or change these texts.
+ * Each mission has exactly three scenes. Later scenes read the capabilities
+ * the child confirmed earlier (variants, skipped needs), so the story merges
+ * back into shared structure instead of branching without end.
  */
 export const MISSIONS: readonly Mission[] = [
   {
     id: "river",
     title: "Across the river",
-    story:
-      "Mossy the snail lives on one side of a wide river. The berry bush is on the other side.",
-    goal: "Help Mossy reach the berries.",
-    drawPrompt: "Draw a way for Mossy to get across the river.",
-    sceneAlt:
-      "A river runs through the middle. A small snail waits on the left bank. A berry bush grows on the right bank.",
-    ideas: [
+    goal: "Help Mossy the snail reach the berries and a new friend.",
+    hero: "Mossy",
+    scenes: [
       {
-        id: "bridge",
-        label: "A bridge",
-        hint: "Something laid over the water to walk across.",
-        consequence:
-          "Mossy slides onto your bridge and crosses, one slow inch at a time. Your bridge holds all the way.",
-        complication:
-          "The bridge works, but it is slippery with spray. Mossy wonders how to feel steadier on the way back.",
-        motion: "steady",
-        refinements: [
-          { id: "bridge.rail", label: "Add a rail to hold", hint: "A bar along the side of the bridge.", ending: "With the rail, Mossy crosses back feeling steady, berries in tow. Your bridge now has a place to hold on." },
-          { id: "bridge.wide", label: "Make it wider", hint: "A broader bridge with more room.", ending: "On the wider bridge Mossy has room to stretch out, and a friend even walks alongside. The berries get shared." },
-          { id: "bridge.keep", label: "Keep my bridge as it is", hint: "No change.", ending: "Mossy goes back slowly and carefully. Your first bridge was enough, and the berries made it home." },
+        id: "river-1",
+        title: "The wide river",
+        story: "Mossy the snail lives on one side of a wide river. The berry bush is on the other side.",
+        prompt: "Draw something that helps Mossy get to the berries.",
+        sceneAlt:
+          "A wide river between two green banks. A small snail waits on the left bank. A berry bush grows on the right bank.",
+        needs: [
+          {
+            id: "cross",
+            label: "cross the river",
+            solvedBy: ["connects_places", "carries_someone", "floats", "flies"],
+            partialBy: ["supports_weight", "anchors", "pushes_or_pulls", "rolls", "signals", "delivers"],
+          },
         ],
+        outcome: {
+          full: "Mossy reaches the berry bush and takes a big, happy sniff.",
+          partial: "Mossy gets close to the berries. One more step would make it all the way.",
+          neutral: "Mossy watches it do its own thing. The river is still wide, but Mossy has a new idea of what could happen.",
+        },
+        recap: {
+          full: "Mossy reached the berries.",
+          partial: "Mossy got close to the berries.",
+          neutral: "It surprised everyone, and the story went on.",
+        },
       },
       {
-        id: "stones",
-        label: "Stepping stones",
-        hint: "A line of stones to step or hop on.",
-        consequence:
-          "Mossy hops from stone to stone, and each one is just big enough. Splash by splash, Mossy makes it across.",
-        complication:
-          "A few stones wobble, and some of the gaps are long for a snail. Mossy needs the trip to feel safer.",
-        motion: "bouncy",
-        refinements: [
-          { id: "stones.more", label: "Add more stones", hint: "Shorter gaps between stones.", ending: "With more stones, every gap is short. Mossy crosses back in a happy zigzag with the berries." },
-          { id: "stones.rope", label: "Add a rope along them", hint: "A line to hold beside the stones.", ending: "Mossy holds the rope and glides back across. The wobbly stones feel steady now." },
-          { id: "stones.keep", label: "Keep my stones as they are", hint: "No change.", ending: "Mossy picks a careful path back over the same stones. Your idea got the berries home." },
+        id: "river-2",
+        title: "The river rushes",
+        story:
+          "Rain upstream has made the river quick, and the wind is blowing hard. Mossy wants to carry berries home to the left bank without being swept away.",
+        variants: [
+          {
+            ifAnyPrior: ["connects_places", "supports_weight"],
+            story:
+              "Your first idea still spans the water, but the wind makes it wobble. Mossy wants to carry berries home to the left bank without slipping.",
+          },
+          {
+            ifAnyPrior: ["carries_someone", "floats", "flies", "rolls"],
+            story:
+              "Your first idea waits by the bank, but the river is quick and the wind is pushing hard. Mossy wants to carry berries home to the left bank safely.",
+          },
         ],
+        prompt: "Draw something that keeps Mossy steady on the way home.",
+        sceneAlt:
+          "The river is faster now, with wind lines across the sky. A snail with a berry stands on the right bank. The left bank is far away.",
+        needs: [
+          {
+            id: "cross-back",
+            label: "get home across the water",
+            solvedBy: ["connects_places", "carries_someone", "floats", "flies"],
+            partialBy: ["rolls", "pushes_or_pulls"],
+            skipIfPrior: ["connects_places"],
+          },
+          {
+            id: "steady",
+            label: "stay steady in the wind",
+            solvedBy: ["anchors", "supports_weight", "blocks", "shelters"],
+            partialBy: ["floats", "carries_someone", "connects_places", "pushes_or_pulls"],
+          },
+        ],
+        outcome: {
+          full: "Mossy crosses home steady and dry, berries safe. The wind just blows past.",
+          partial: "Mossy makes it across, wobbling a little and holding the berries tight. It worked, and it could be steadier.",
+          neutral: "Your idea does something surprising, and Mossy waits for a calmer moment. The berries are safe for now.",
+        },
+        recap: {
+          full: "Mossy got home steady and dry.",
+          partial: "Mossy got home, a little wobbly.",
+          neutral: "Mossy waited safely for calmer weather.",
+        },
       },
       {
-        id: "raft",
-        label: "A raft or boat",
-        hint: "Something that floats and carries Mossy on the water.",
-        consequence:
-          "Mossy climbs aboard your boat and floats gently over the water. The far bank slowly comes closer.",
-        complication:
-          "The current nudges the boat sideways. Mossy lands a little downstream from the berries.",
-        motion: "float",
-        refinements: [
-          { id: "raft.rope", label: "Add a rope to the bank", hint: "A line that keeps the boat on course.", ending: "The rope keeps the boat on course. Mossy lands right beside the berry bush and then sails back, full." },
-          { id: "raft.paddle", label: "Add a paddle", hint: "A tool to steer with.", ending: "With a paddle Mossy steers straight to the berries and back again. Your boat now has a way to steer." },
-          { id: "raft.keep", label: "Keep my boat as it is", hint: "No change.", ending: "Mossy walks the short way along the bank to the berries. Your boat did the hard part." },
+        id: "river-3",
+        title: "Peeping on the rock",
+        story:
+          "On the way home Mossy hears peeping. Pip the duckling is stuck on a flat rock in the middle of the water and cannot get to the shore.",
+        variants: [
+          {
+            ifAnyPrior: ["carries_someone", "floats", "flies"],
+            story:
+              "On the way home Mossy hears peeping. Pip the duckling is stuck on a flat rock in the middle of the water. Your earlier idea is still nearby and might help.",
+          },
+          {
+            ifAnyPrior: ["connects_places", "supports_weight"],
+            story:
+              "On the way home Mossy hears peeping. Pip the duckling is stuck on a flat rock in the middle of the water. Your earlier crossing is close to the rock.",
+          },
         ],
-      },
-      {
-        id: "rope",
-        label: "A rope or vine",
-        hint: "A line to swing or slide along over the water.",
-        consequence:
-          "Mossy holds tight and swings out over the river, landing softly on the far bank. The berries are right there.",
-        complication:
-          "The swing is quick, and holding on is hard work for a small snail. Mossy would like a more comfortable ride.",
-        motion: "swing",
-        refinements: [
-          { id: "rope.seat", label: "Add a seat", hint: "A place to sit while crossing.", ending: "Sitting on the seat, Mossy swings across and back with a big grin. The berries ride along in a basket." },
-          { id: "rope.landing", label: "Add a soft landing", hint: "Something soft to land on.", ending: "Mossy lands on a pile of soft leaves and rolls to a stop beside the bush. Your rope has a soft landing now." },
-          { id: "rope.keep", label: "Keep my rope as it is", hint: "No change.", ending: "Mossy holds on tight once more and swings home. Your first rope was enough." },
+        prompt: "Draw something that helps Pip get to the shore.",
+        sceneAlt:
+          "A flat rock in the middle of the river with a small yellow duckling on it. The shore is on the left. A snail waits there.",
+        needs: [
+          {
+            id: "reach-pip",
+            label: "reach Pip",
+            solvedBy: ["carries_someone", "floats", "flies", "connects_places", "pushes_or_pulls"],
+            partialBy: ["signals", "lights_area", "marks_path", "rolls"],
+          },
+          {
+            id: "safe-ride",
+            label: "keep Pip safe from the current",
+            solvedBy: ["shelters", "anchors", "blocks", "supports_weight", "floats"],
+            partialBy: ["carries_someone", "connects_places"],
+          },
         ],
+        outcome: {
+          full: "Pip hops aboard and is soon safe on the shore. Mossy and Pip share the berries.",
+          partial: "Pip is not alone any more, and help is close. Mossy and Pip wait together near the shore.",
+          neutral: "Pip peeps happily at your surprising idea. Mossy stays close until the river calms down.",
+        },
+        recap: {
+          full: "Pip got safely to shore.",
+          partial: "Pip had company and help was close.",
+          neutral: "Pip cheered on a surprising idea.",
+        },
       },
     ],
   },
   {
     id: "sprout",
     title: "The windy hill",
-    story:
-      "A tiny sprout is growing on a hill. Gusty wind and rain are coming this afternoon, and the sprout is small and bendy.",
-    goal: "Help the sprout get through the weather.",
-    drawPrompt: "Draw a way to look after the sprout.",
-    sceneAlt:
-      "A grassy hill with one tiny green sprout. Grey clouds and wind swirls gather in the sky.",
-    ideas: [
+    goal: "Help Sprig the sprout grow through a day of changing weather.",
+    hero: "Sprig",
+    scenes: [
       {
-        id: "cover",
-        label: "A roof or umbrella",
-        hint: "Something above the sprout that keeps the rain off.",
-        consequence:
-          "Rain taps on your cover and rolls off the sides. The sprout stays dry and perky underneath.",
-        complication:
-          "The wind tugs at the cover and it starts to tilt. It needs to stay put.",
-        motion: "steady",
-        refinements: [
-          { id: "cover.pegs", label: "Add pegs to hold it down", hint: "Small stakes that anchor the cover.", ending: "With pegs in the ground, the cover stays put all afternoon. When the sun returns, the sprout is a little taller." },
-          { id: "cover.slope", label: "Make it slanted", hint: "A tilted roof so wind slides over.", ending: "The slanted roof lets the wind slide right over. The sprout barely rustles." },
-          { id: "cover.keep", label: "Keep my cover as it is", hint: "No change.", ending: "The cover wobbles but holds, and the sprout makes it through. Tomorrow it is sunny." },
+        id: "sprout-1",
+        title: "Wind and rain",
+        story: "Sprig, a tiny sprout, grows on a hill. Strong wind and rain are coming this afternoon.",
+        prompt: "Draw something that helps Sprig through the weather.",
+        sceneAlt: "A grassy hill with one tiny green sprout. Grey clouds, wind swirls, and rain gather in the sky.",
+        needs: [
+          {
+            id: "shield",
+            label: "get through the weather",
+            solvedBy: ["shelters", "blocks", "delivers"],
+            partialBy: ["anchors", "supports_weight", "carries_someone"],
+          },
         ],
+        outcome: {
+          full: "The wind rushes past and the rain rolls away. Sprig stays dry and upright.",
+          partial: "Sprig is better off than before, though a few gusts still get through.",
+          neutral: "Your idea does something unexpected on the hill. The weather passes, and Sprig is still there.",
+        },
+        recap: {
+          full: "Sprig stayed dry and upright.",
+          partial: "Sprig was better off, with a few gusts left.",
+          neutral: "Sprig came through, with a surprise on the hill.",
+        },
       },
       {
-        id: "windbreak",
-        label: "A wall or fence",
-        hint: "Something standing beside the sprout that blocks the wind.",
-        consequence:
-          "The wind hits your wall and swirls up and over. Behind it, the sprout hardly moves.",
-        complication:
-          "The wall blocks the wind, but the rain still comes from above and the sprout is getting wet.",
-        motion: "steady",
-        refinements: [
-          { id: "windbreak.roof", label: "Add a top", hint: "A cover across the top of the wall.", ending: "With a top on the wall, the sprout is sheltered from wind and rain. It stands up straight in the soft light." },
-          { id: "windbreak.curve", label: "Curve it around", hint: "Bend the wall around the sprout.", ending: "The curved wall wraps around the sprout like a cozy nest. The wind finds no way in." },
-          { id: "windbreak.keep", label: "Keep my wall as it is", hint: "No change.", ending: "A little rain is fine for a sprout. Your wall kept the wind off, and the plant grows." },
+        id: "sprout-2",
+        title: "Sunshine across the mud",
+        story:
+          "After the storm, Sprig needs sun. The sunny slope is across a muddy patch, and Sprig is too fragile to be bumped.",
+        variants: [
+          {
+            ifAnyPrior: ["shelters", "blocks"],
+            story:
+              "Your first idea kept Sprig safe, but it is shady underneath. The sunny slope is across a muddy patch, and Sprig must be moved gently.",
+          },
+          {
+            ifAnyPrior: ["anchors", "supports_weight"],
+            story:
+              "Your first idea holds Sprig firmly, but Sprig needs sunshine. The sunny slope is across a muddy patch, and Sprig must be moved gently.",
+          },
         ],
+        prompt: "Draw something that gets Sprig to the sun gently.",
+        sceneAlt:
+          "After the rain, a muddy brown patch lies between a shady spot on the left and a sunny slope on the right. The sprout is on the left.",
+        needs: [
+          {
+            id: "move",
+            label: "reach the sunny slope",
+            solvedBy: ["carries_someone", "delivers", "rolls", "flies", "pushes_or_pulls", "connects_places"],
+            partialBy: ["floats", "supports_weight"],
+          },
+          {
+            id: "gentle",
+            label: "stay safe from bumps",
+            solvedBy: ["shelters", "supports_weight", "anchors", "delivers", "blocks"],
+            partialBy: ["carries_someone", "floats"],
+          },
+        ],
+        outcome: {
+          full: "Sprig arrives on the sunny slope without a single bump and turns toward the light.",
+          partial: "Sprig reaches the sun and feels a few bumps on the way. It is tired but happy.",
+          neutral: "Your idea does something surprising while the mud dries. Sprig soaks up a little sun where it is.",
+        },
+        recap: {
+          full: "Sprig reached the sun smoothly.",
+          partial: "Sprig reached the sun, a bit bumped.",
+          neutral: "Sprig found some sun in a surprising way.",
+        },
       },
       {
-        id: "pot",
-        label: "A pot to carry it inside",
-        hint: "A container so the sprout can be moved somewhere sheltered.",
-        consequence:
-          "Gently, the sprout is tucked into your pot and carried to a sheltered corner. The weather rattles by outside.",
-        complication:
-          "Inside it is cozy, but there is no light, and a sprout needs light to grow.",
-        motion: "bouncy",
-        refinements: [
-          { id: "pot.window", label: "Put it by a window", hint: "A bright spot near glass.", ending: "By the window the sprout watches the storm and soaks up every bit of daylight. It grows a new leaf." },
-          { id: "pot.lamp", label: "Add a lamp", hint: "A light to shine on the sprout.", ending: "Your lamp glows warm over the sprout. It turns toward the light and stretches." },
-          { id: "pot.keep", label: "Keep my pot as it is", hint: "No change.", ending: "When the weather clears, the pot goes back outside. The sprout is safe and ready for sunshine." },
+        id: "sprout-3",
+        title: "A cold, clear night",
+        story: "The sun is warm now, but tonight will be clear and chilly, and the hillside soil is slippery.",
+        variants: [
+          {
+            ifPriorLevel: "full",
+            story:
+              "Sprig is strong and happy in the sunny spot. Tonight will be clear and chilly, and the hillside soil is slippery.",
+          },
+          {
+            ifPriorLevel: "partial",
+            story:
+              "Sprig is in the sunny spot and still a bit bumped. Tonight will be clear and chilly, and the hillside soil is slippery.",
+          },
         ],
-      },
-      {
-        id: "support",
-        label: "A stick and string",
-        hint: "A support that holds the sprout upright.",
-        consequence:
-          "Your stick stands tall and the string holds the sprout loosely. When the wind pushes, the sprout bends and bounces back.",
-        complication:
-          "The stick holds, but the string is a little too tight and the sprout looks squished.",
-        motion: "swing",
-        refinements: [
-          { id: "support.loose", label: "Loosen the string", hint: "A looser loop around the sprout.", ending: "With a looser loop, the sprout sways without breaking. It grows strong in the breeze." },
-          { id: "support.soft", label: "Add a soft wrap", hint: "A padded band instead of bare string.", ending: "The soft wrap cushions the sprout. It leans in the wind and stands up again." },
-          { id: "support.keep", label: "Keep my stick as it is", hint: "No change.", ending: "The sprout wobbles but stands. By evening, the wind is gone and the sprout is still there." },
+        prompt: "Draw something that helps Sprig through the night.",
+        sceneAlt:
+          "A sloping hillside at dusk with early stars. The sprout stands on a sunny patch. The soil has slippery marks.",
+        needs: [
+          {
+            id: "warm",
+            label: "stay warm",
+            solvedBy: ["shelters", "blocks", "lights_area"],
+            partialBy: ["anchors", "delivers"],
+          },
+          {
+            id: "steady-soil",
+            label: "stay put on the slope",
+            solvedBy: ["anchors", "supports_weight"],
+            partialBy: ["blocks", "shelters"],
+            skipIfPrior: ["anchors"],
+          },
         ],
+        outcome: {
+          full: "Sprig sleeps warm and steady under the stars. By morning it has a brand new leaf.",
+          partial: "Sprig has a chilly night, and morning comes. It is still there, and it stands a bit taller.",
+          neutral: "Your idea glimmers in the dark in a way nobody expected. Sprig makes it to the morning.",
+        },
+        recap: {
+          full: "Sprig grew a new leaf overnight.",
+          partial: "Sprig made it through a chilly night.",
+          neutral: "Sprig made it to morning, with a surprise.",
+        },
       },
     ],
   },
   {
     id: "fog",
-    title: "Lost in the fog",
-    story:
-      "Fog is drifting over the meadow. Bix is on a walk home and cannot tell which way leads to the village.",
-    goal: "Help Bix find the way to the village.",
-    drawPrompt: "Draw a way to show Bix where to go.",
-    sceneAlt:
-      "A meadow in soft fog. A small traveler stands at a fork in the path on the left. Rooftops of a village glow faintly on the right.",
-    ideas: [
+    title: "Lights in the fog",
+    goal: "Help Bix the traveler find the way home and help a friend.",
+    hero: "Bix",
+    scenes: [
       {
-        id: "signpost",
-        label: "A signpost",
-        hint: "A post with arrows pointing the way.",
-        consequence:
-          "Bix reads your signpost, nods, and walks the way the arrow points. The path leads straight on.",
-        complication:
-          "Soon the fog is so thick that Bix can barely see the next signpost. Bix needs something easier to spot.",
-        motion: "steady",
-        refinements: [
-          { id: "signpost.color", label: "Make it bright", hint: "Bold colors that stand out in fog.", ending: "The bright signpost glows through the mist. Bix follows it all the way home." },
-          { id: "signpost.more", label: "Add more signposts", hint: "A sign every few steps.", ending: "With a sign every few steps, Bix never wonders where to go. The village door is open when Bix arrives." },
-          { id: "signpost.keep", label: "Keep my signpost as it is", hint: "No change.", ending: "Bix walks slowly from sign to sign. One careful step at a time, home comes into view." },
+        id: "fog-1",
+        title: "Lost in the mist",
+        story: "Fog drifts over the meadow. Bix is walking home and cannot see which way the village is.",
+        prompt: "Draw something that helps Bix find the way.",
+        sceneAlt:
+          "A meadow in soft fog. A small traveler stands on a path on the left. Rooftops of a village glow faintly on the right.",
+        needs: [
+          {
+            id: "find-way",
+            label: "find the way",
+            solvedBy: ["lights_area", "signals", "marks_path"],
+            partialBy: ["carries_someone", "flies", "connects_places", "rolls"],
+          },
         ],
+        outcome: {
+          full: "Bix sees it through the mist and walks toward the village. The way feels clear.",
+          partial: "Bix can tell which direction might be right and walks on, carefully.",
+          neutral: "Bix does not know quite what to make of it, but it is interesting. Bix keeps going slowly.",
+        },
+        recap: {
+          full: "Bix could see the way.",
+          partial: "Bix found a likely direction.",
+          neutral: "Bix kept going, curious about a surprise.",
+        },
       },
       {
-        id: "lanterns",
-        label: "A line of lanterns",
-        hint: "Lights set along the path.",
-        consequence:
-          "One by one, your lanterns glow along the path. Bix follows the little lights through the mist.",
-        complication:
-          "The lanterns end before the village, and Bix reaches a dark stretch with a fork.",
-        motion: "float",
-        refinements: [
-          { id: "lanterns.more", label: "Add more lanterns", hint: "Extend the line of lights to the village.", ending: "The lanterns now reach the village gate. Bix walks the glowing path all the way home." },
-          { id: "lanterns.arrow", label: "Add an arrow at the fork", hint: "A marker showing which way to turn.", ending: "At the fork, your arrow shows the way. Bix turns, and the village lights twinkle ahead." },
-          { id: "lanterns.keep", label: "Keep my lanterns as they are", hint: "No change.", ending: "Bix takes a careful guess at the fork and, with the lanterns behind, finds the village." },
+        id: "fog-2",
+        title: "The fork and the gap",
+        story: "Bix reaches a fork. One path ends at a gap with a trickling stream. Bix is not sure which way is the village.",
+        variants: [
+          {
+            ifAnyPrior: ["lights_area"],
+            story:
+              "Your lights glow near a fork, but they do not say which way to go. One path ends at a gap with a trickling stream.",
+          },
+          {
+            ifAnyPrior: ["marks_path", "signals"],
+            story:
+              "Your first idea led Bix to a fork. One path ends at a gap with a trickling stream, and the village is hidden in the mist.",
+          },
         ],
+        prompt: "Draw something that helps Bix choose the way and get past the gap.",
+        sceneAlt:
+          "The path splits in two. The right branch stops at a narrow gap with a little stream. Soft fog hangs over both branches.",
+        needs: [
+          {
+            id: "choose",
+            label: "choose the right path",
+            solvedBy: ["signals", "marks_path"],
+            partialBy: ["lights_area", "flies"],
+            skipIfPrior: ["marks_path"],
+          },
+          {
+            id: "gap",
+            label: "get past the gap",
+            solvedBy: ["connects_places", "supports_weight", "carries_someone", "flies"],
+            partialBy: ["floats", "rolls"],
+          },
+        ],
+        outcome: {
+          full: "Bix picks the right path and steps over the gap. The village roofs appear through the mist.",
+          partial: "Bix takes a careful step at the gap and keeps going. The village is a little closer.",
+          neutral: "Your idea does something surprising at the fork. Bix waits, then follows the sound of the stream.",
+        },
+        recap: {
+          full: "Bix chose well and crossed the gap.",
+          partial: "Bix moved on, a little closer to the village.",
+          neutral: "Bix followed a surprise and waited.",
+        },
       },
       {
-        id: "flag",
-        label: "A tall flag or tower",
-        hint: "Something tall that can be seen from far away.",
-        consequence:
-          "Your flag rises above the fog. Bix spots it from far off and heads straight toward it.",
-        complication:
-          "The flag shows where the village is, but the meadow has puddles and bumps that Bix cannot see.",
-        motion: "swing",
-        refinements: [
-          { id: "flag.path", label: "Add a path to it", hint: "A clear route leading to the flag.", ending: "Your path leads from the meadow to the flag. Bix walks it dry-footed and arrives at the village." },
-          { id: "flag.light", label: "Add a light on top", hint: "A glow at the top of the flag.", ending: "A light on the flag glows through the mist. Bix steps toward it, cheerful, and is home before dark." },
-          { id: "flag.keep", label: "Keep my flag as it is", hint: "No change.", ending: "Bix walks toward the flag, splashing through a puddle or two. The village is warm and welcoming." },
+        id: "fog-3",
+        title: "A friend behind the rock",
+        story:
+          "At the village gate, Bix hears a call. Rue, a small hedgehog, is stuck behind a big rock on the hill and cannot see the way down.",
+        variants: [
+          {
+            ifAnyPrior: ["lights_area", "signals", "marks_path"],
+            story:
+              "At the village gate, Bix hears a call. Rue, a small hedgehog, is stuck behind a big rock on the hill. Your earlier idea could help Rue see the way down.",
+          },
         ],
-      },
-      {
-        id: "markers",
-        label: "Colored stones or ribbons",
-        hint: "Little markers along the path.",
-        consequence:
-          "Bix spots your first marker, then the next, and the next. Following them leads out of the meadow.",
-        complication:
-          "The markers all look alike, so at the fork Bix cannot tell which path they belong to.",
-        motion: "bouncy",
-        refinements: [
-          { id: "markers.color", label: "Use one special color", hint: "Pick one color just for the right path.", ending: "Only the right path has your special color. Bix follows it with confidence, straight to the village." },
-          { id: "markers.shape", label: "Add a shape pointing on", hint: "Markers that point toward the village.", ending: "Your pointing markers make every turn clear. Bix arrives home feeling like a pathfinder." },
-          { id: "markers.keep", label: "Keep my markers as they are", hint: "No change.", ending: "Bix checks both paths and finds your markers on the right one. Home at last." },
+        prompt: "Draw something that helps Rue get down the hill.",
+        sceneAlt:
+          "A village gate on the right with glowing windows. A big rock on a hill on the left, with a small hedgehog behind it.",
+        needs: [
+          {
+            id: "reach-rue",
+            label: "reach Rue",
+            solvedBy: ["carries_someone", "flies", "connects_places", "pushes_or_pulls", "signals", "lights_area"],
+            partialBy: ["marks_path", "rolls"],
+          },
+          {
+            id: "bring-down",
+            label: "bring Rue down safely",
+            solvedBy: ["carries_someone", "supports_weight", "floats", "rolls", "shelters", "delivers"],
+            partialBy: ["marks_path", "connects_places", "blocks"],
+          },
         ],
+        outcome: {
+          full: "Rue comes down the hill safe and sound, and Bix opens the village gate. Everybody is home.",
+          partial: "Rue starts down the hill with Bix close by. They reach the gate slowly, side by side.",
+          neutral: "Rue is curious about your surprising idea. Bix and Rue wait together until the fog thins.",
+        },
+        recap: {
+          full: "Rue got home safe.",
+          partial: "Rue and Bix reached the gate slowly.",
+          neutral: "Rue and Bix waited out the fog together.",
+        },
       },
     ],
   },

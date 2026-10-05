@@ -1,14 +1,12 @@
 import type { Phase } from "@/lib/session/state";
 
-const STEPS = ["Mission", "Draw", "Check", "Story"] as const;
-
-const INDEX: Record<Phase, number> = { intro: 0, draw: 1, confirm: 2, consequence: 3, summary: 4 };
+const STEPS = ["Scene 1", "Scene 2", "Scene 3", "Your trail"] as const;
 
 /** A dashed path with four stops. Text and shape both carry the state, never color alone. */
-export function Trail({ phase, round }: { phase: Phase; round: 1 | 2 }) {
-  const current = INDEX[phase];
+export function Trail({ phase, scene }: { phase: Phase; scene: 0 | 1 | 2 }) {
+  const current = phase === "summary" ? 3 : phase === "intro" ? 0 : scene;
   return (
-    <ol className="trail" aria-label={`Your steps. Try ${round} of 2.`}>
+    <ol className="trail" aria-label={phase === "summary" ? "Your adventure, finished" : `Your adventure. Scene ${scene + 1} of 3.`}>
       {STEPS.map((label, i) => {
         const state = i < current ? "done" : i === current ? "current" : "todo";
         return (

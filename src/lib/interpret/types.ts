@@ -1,14 +1,21 @@
 import { z } from "zod";
-import type { Candidate, Round } from "../missions/engine";
+import { CapabilityOrUnknownSchema, type Capability } from "../capabilities";
+import type { SceneIndex } from "../missions/engine";
 import type { MissionId } from "../missions/types";
 
 export const CONFIDENCES = ["low", "medium", "high"] as const;
 
-/** The only shape an interpreter may produce. Anything else is discarded. */
+/**
+ * The only shape an interpreter may produce: a functional proposal. It cannot
+ * carry story text, rules, or instructions; the child still confirms.
+ */
 export const InterpretationSchema = z
   .object({
-    candidateId: z.string().min(1).max(64),
+    proposed_affordances: z.array(CapabilityOrUnknownSchema).min(1).max(2),
+    optional_safe_label: z.string().max(60).nullable(),
     confidence: z.enum(CONFIDENCES),
+    uncertain: z.boolean(),
+    needs_child_confirmation: z.boolean(),
   })
   .strict();
 
@@ -29,16 +36,17 @@ export class InterpretError extends Error {
 
 export interface InterpretInput {
   missionId: MissionId;
-  round: Round;
-  candidates: Candidate[];
-  /** Validated PNG, base64 without a data URL prefix. */
+  scene: SceneIndex;
+  /** Capabilities the child confirmed in earlier scenes. */
+  priorCaps: Capability[];
+  /** Validated PNG (scene, persistent elements, current strokes), base64 without a prefix. */
   imageBase64: string;
   signal: AbortSignal;
 }
 
 /**
  * Adapter boundary. Implementations return untrusted, unvalidated data; the
- * service validates it against InterpretationSchema and the candidate list.
+ * service validates it against InterpretationSchema and the capability list.
  */
 export interface Interpreter {
   readonly name: "fake" | "groq";
@@ -54,7 +62,12 @@ export type FallbackReason =
   | "unsure";
 
 export type InterpretResponse =
-  | { status: "ok"; candidateId: string; confidence: Interpretation["confidence"]; source: "fake" | "groq" }
+  | {
+      status: "ok";
+      /** One or two real capabilities (never "unknown"; that is a fallback). */
+      capabilities: Capability[];
+      /** Vetted decorative name, or null. */
+      label: string | null;
+      source: "fake" | "groq";
+    }
   | { status: "fallback"; reason: FallbackReason };
-
-export const NO_MATCH = "none";

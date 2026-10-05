@@ -12,14 +12,16 @@ import {
   pointsLeft,
   type Stroke,
 } from "@/lib/drawing/model";
+import { ERASER_RADIUS, emptyHistory, record, redo as redoOp, strokesAt, undo as undoOp, type History } from "@/lib/drawing/history";
 import { paintAll, paintStroke } from "@/lib/drawing/render";
 
 interface Props {
   strokes: Stroke[];
-  round: 1 | 2;
+  scene: 0 | 1 | 2;
   onChange: (next: Stroke[]) => void;
   onAnnounce: (message: string) => void;
-  scene: ReactNode;
+  /** Layer 1 and 2: the scene backdrop and the persistent elements. Never edited here. */
+  layers: ReactNode;
 }
 
 const KEY_STEP = 24;
@@ -38,24 +40,26 @@ function radioKeys(count: number, current: number, set: (n: number) => void) {
   };
 }
 
-function mineAfter(current: Stroke[], r: 1 | 2): number {
-  return current.filter((s) => s.r === r).length - 1;
-}
-
-export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: Props) {
+export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const live = useRef<number[] | null>(null);
+  const livePressure = useRef<{ sum: number; n: number }>({ sum: 0, n: 0 });
+  const erasing = useRef<Set<Stroke>>(new Set());
   const [color, setColor] = useState(0);
   const [width, setWidth] = useState(1);
-  const [redo, setRedo] = useState<Stroke[]>([]);
+  const [tool, setTool] = useState<"draw" | "erase">("draw");
+  const [history, setHistory] = useState<History>(emptyHistory);
   const [cursor, setCursor] = useState({ x: CANVAS_W / 2, y: CANVAS_H / 2 });
   const [penDown, setPenDown] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Latest values for the native listeners below.
-  const latest = useRef({ strokes, round, color, width, onChange, onAnnounce, redo, cursor, penDown });
-  latest.current = { strokes, round, color, width, onChange, onAnnounce, redo, cursor, penDown };
+  const latest = useRef({ strokes, scene, color, width, tool, onChange, onAnnounce, history, cursor });
+  latest.current = { strokes, scene, color, width, tool, onChange, onAnnounce, history, cursor };
+
+  const mine = strokes.filter((s) => s.s === scene);
 
   const repaint = useCallback(() => {
     const canvas = canvasRef.current;
@@ -63,9 +67,11 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const scale = canvas.width / CANVAS_W;
-    paintAll(ctx, latest.current.strokes, scale);
-    if (live.current) {
-      paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: live.current }, scale);
+    const cur = latest.current;
+    paintAll(ctx, cur.strokes.filter((s) => s.s === cur.scene && !erasing.current.has(s)), scale);
+    if (live.current && cur.tool === "draw") {
+      const { sum, n } = livePressure.current;
+      paintStroke(ctx, { c: cur.color, w: cur.width, p: live.current, pr: n ? Math.round((sum / n) * 100) || undefined : undefined }, scale);
     }
   }, []);
 
@@ -90,11 +96,16 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
     return () => ro.disconnect();
   }, [repaint]);
 
-  useEffect(repaint, [strokes, repaint]);
+  useEffect(repaint, [strokes, tool, repaint]);
+
+  const apply = useCallback((next: Stroke[], hist: History) => {
+    setHistory(hist);
+    latest.current.onChange(next);
+  }, []);
 
   const commit = useCallback(
-    (raw: number[]) => {
-      const { strokes: current, round: r, color: c, width: w } = latest.current;
+    (raw: number[], pressure?: number) => {
+      const { strokes: current, scene: s, color: c, width: w } = latest.current;
       // Never exceed the total point limit, or the saved session could not be restored.
       const p = normalizePoints(raw).slice(0, Math.max(0, pointsLeft(current)) * 2);
       if (p.length < 2) return;
@@ -103,19 +114,47 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
         repaint();
         return;
       }
-      setRedo([]);
-      const next = [...current, { c, w, r, p } as Stroke];
-      latest.current.onChange(next);
-      latest.current.onAnnounce(`Line added. ${next.filter((s) => s.r === r).length} on the page.`);
+      const stroke: Stroke = { c, w, s, p, ...(pressure ? { pr: pressure } : {}) };
+      apply([...current, stroke], record(latest.current.history, { type: "add", stroke }));
+      latest.current.onAnnounce(`Line added. ${current.filter((x) => x.s === s).length + 1} on the page.`);
+    },
+    [apply, repaint],
+  );
+
+  const eraseAt = useCallback(
+    (x: number, y: number) => {
+      const { strokes: current, scene: s } = latest.current;
+      let changed = false;
+      for (const hit of strokesAt(current, s, x, y, ERASER_RADIUS)) {
+        if (!erasing.current.has(hit)) {
+          erasing.current.add(hit);
+          changed = true;
+        }
+      }
+      if (changed) repaint();
     },
     [repaint],
   );
+
+  const finishErase = useCallback(() => {
+    const gone = [...erasing.current];
+    erasing.current = new Set();
+    if (gone.length === 0) {
+      repaint();
+      return;
+    }
+    const { strokes: current } = latest.current;
+    const set = new Set(gone);
+    apply(current.filter((s) => !set.has(s)), record(latest.current.history, { type: "remove", strokes: gone }));
+    latest.current.onAnnounce(`Erased ${gone.length} ${gone.length === 1 ? "line" : "lines"}.`);
+  }, [apply, repaint]);
 
   // Pointer Events: one code path for mouse, touch, and stylus.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let activeId: number | null = null;
+    let penPointer = false;
 
     const toLogical = (e: PointerEvent): [number, number] => {
       const rect = canvas.getBoundingClientRect();
@@ -123,6 +162,17 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
         clamp(((e.clientX - rect.left) / rect.width) * CANVAS_W, 0, CANVAS_W),
         clamp(((e.clientY - rect.top) / rect.height) * CANVAS_H, 0, CANVAS_H),
       ];
+    };
+    const sample = (ev: PointerEvent) => {
+      // Pressure is a progressive enhancement: only a pen that reports it can thicken or thin a line.
+      if (penPointer && ev.pressure > 0) {
+        livePressure.current.sum += ev.pressure;
+        livePressure.current.n += 1;
+      }
+    };
+    const livePr = () => {
+      const { sum, n } = livePressure.current;
+      return n ? clamp(Math.round((sum / n) * 100), 1, 100) : undefined;
     };
     const extend = (e: PointerEvent) => {
       if (!live.current) return;
@@ -133,9 +183,13 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       for (const ev of list) {
         if (live.current.length >= 3000) break;
         const from = live.current.length;
-        live.current.push(...toLogical(ev));
-        if (ctx) {
-          paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: live.current }, scale, from);
+        const pt = toLogical(ev);
+        live.current.push(...pt);
+        if (latest.current.tool === "erase") {
+          eraseAt(pt[0], pt[1]);
+        } else {
+          sample(ev);
+          if (ctx) paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: live.current, pr: livePr() }, scale, from);
         }
       }
     };
@@ -144,6 +198,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       if (e.pointerType === "mouse" && e.button !== 0) return;
       e.preventDefault();
       activeId = e.pointerId;
+      penPointer = e.pointerType === "pen";
+      livePressure.current = { sum: 0, n: 0 };
       try {
         canvas.setPointerCapture(e.pointerId);
       } catch {
@@ -152,8 +208,13 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       areaRef.current?.focus({ preventScroll: true });
       const [x, y] = toLogical(e);
       live.current = [x, y];
-      const ctx = canvas.getContext("2d");
-      if (ctx) paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: [x, y, x, y] }, canvas.width / CANVAS_W);
+      if (latest.current.tool === "erase") {
+        eraseAt(x, y);
+      } else {
+        sample(e);
+        const ctx = canvas.getContext("2d");
+        if (ctx) paintStroke(ctx, { c: latest.current.color, w: latest.current.width, p: [x, y, x, y], pr: livePr() }, canvas.width / CANVAS_W);
+      }
     };
     const move = (e: PointerEvent) => {
       if (e.pointerId !== activeId) return;
@@ -165,7 +226,14 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       const points = live.current;
       if (!cancelled) extend(e);
       live.current = null;
-      if (points && !cancelled) commit(points);
+      if (latest.current.tool === "erase") {
+        if (cancelled) {
+          erasing.current = new Set();
+          repaint();
+        } else finishErase();
+        return;
+      }
+      if (points && !cancelled) commit(points, penPointer ? livePr() : undefined);
       else repaint();
     };
     const up = (e: PointerEvent) => finish(e, false);
@@ -184,37 +252,31 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       canvas.removeEventListener("pointercancel", cancel);
       canvas.removeEventListener("contextmenu", noMenu);
     };
-  }, [commit, repaint]);
+  }, [commit, eraseAt, finishErase, repaint]);
 
   const undo = useCallback(() => {
-    const { strokes: current, round: r, redo: stack } = latest.current;
-    for (let i = current.length - 1; i >= 0; i--) {
-      if (current[i]!.r === r) {
-        setRedo([...stack, current[i]!]);
-        latest.current.onChange(current.filter((_, j) => j !== i));
-        latest.current.onAnnounce(`Last line removed. ${mineAfter(current, r)} left.`);
-        return;
-      }
-    }
-  }, []);
+    const r = undoOp(latest.current.strokes, latest.current.history);
+    if (!r) return;
+    apply(r.strokes, r.history);
+    latest.current.onAnnounce("Undone.");
+  }, [apply]);
 
-  const redoOne = useCallback(() => {
-    const { strokes: current, redo: stack } = latest.current;
-    const s = stack[stack.length - 1];
-    if (!s || !canAddStroke(current) || s.p.length / 2 > pointsLeft(current)) return;
-    setRedo(stack.slice(0, -1));
-    latest.current.onChange([...current, s]);
-    latest.current.onAnnounce("Line brought back.");
-  }, []);
+  const redo = useCallback(() => {
+    const r = redoOp(latest.current.strokes, latest.current.history);
+    if (!r) return;
+    if (r.strokes.length > latest.current.strokes.length && !canAddStroke(latest.current.strokes)) return;
+    apply(r.strokes, r.history);
+    latest.current.onAnnounce("Brought back.");
+  }, [apply]);
 
   const clearMine = useCallback(() => {
-    const { strokes: current, round: r, redo: stack } = latest.current;
-    const removed = current.filter((s) => s.r === r);
+    const { strokes: current, scene: s } = latest.current;
+    const removed = current.filter((x) => x.s === s);
+    setConfirmClear(false);
     if (!removed.length) return;
-    setRedo([...stack, ...[...removed].reverse()]);
-    latest.current.onChange(current.filter((s) => s.r !== r));
-    latest.current.onAnnounce(r === 1 ? "Drawing cleared. Redo brings lines back." : "Your changes were cleared. Redo brings them back.");
-  }, []);
+    apply(current.filter((x) => x.s !== s), record(latest.current.history, { type: "remove", strokes: removed }));
+    latest.current.onAnnounce("This scene's drawing was cleared. Undo brings it back.");
+  }, [apply]);
 
   // Keyboard drawing: arrows move, Space/Enter puts the pen down or lifts it.
   useEffect(() => {
@@ -225,7 +287,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       const points = live.current;
       live.current = null;
       setPenDown(false);
-      commit(points);
+      if (latest.current.tool === "erase") finishErase();
+      else commit(points);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey) return;
@@ -233,12 +296,12 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        undo();
+        (e.shiftKey ? redo : undo)();
         return;
       }
       if (mod && e.key.toLowerCase() === "y") {
         e.preventDefault();
-        redoOne();
+        redo();
         return;
       }
       if (mod) return;
@@ -260,7 +323,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
         setCursor(next);
         if (live.current) {
           live.current.push(next.x, next.y);
-          repaint();
+          if (latest.current.tool === "erase") eraseAt(next.x, next.y);
+          else repaint();
         }
         return;
       }
@@ -268,14 +332,16 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
         e.preventDefault();
         if (live.current) {
           lift();
-        } else if (e.repeat) {
-          return;
-        } else {
+        } else if (!e.repeat) {
           const { x, y } = latest.current.cursor;
           live.current = [x, y];
+          livePressure.current = { sum: 0, n: 0 };
           setPenDown(true);
-          repaint();
-          latest.current.onAnnounce("Pen down. Use the arrow keys to draw.");
+          if (latest.current.tool === "erase") eraseAt(x, y);
+          else repaint();
+          latest.current.onAnnounce(
+            latest.current.tool === "erase" ? "Eraser down. Move over a line to remove it." : "Pen down. Use the arrow keys to draw.",
+          );
         }
         return;
       }
@@ -297,18 +363,19 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       area.removeEventListener("blur", onBlur);
       area.removeEventListener("focus", onFocus);
     };
-  }, [commit, redoOne, repaint, undo]);
+  }, [commit, eraseAt, finishErase, redo, repaint, undo]);
 
-  const mine = strokes.filter((s) => s.r === round).length;
   const full = !canAddStroke(strokes);
+  const toolText =
+    tool === "erase" ? "Eraser. It removes whole lines it touches." : `Crayon, ${PALETTE[color]?.name}, ${WIDTHS[width]?.name.toLowerCase()}.`;
 
   return (
     <div className="drawing">
       <div className="paper">
-        {scene}
+        {layers}
         <div
           ref={areaRef}
-          className="draw-area"
+          className={`draw-area tool-${tool}`}
           role="application"
           aria-roledescription="drawing area"
           aria-label="Drawing area"
@@ -329,11 +396,27 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       </div>
       <p id="draw-help" className="help">
         Draw with your finger, pen, or mouse. With a keyboard, click the page or tab to it, then use the arrow keys to
-        move and Space to put the pen down or lift it (Escape also lifts it). Prefer not to draw? Use the
-        button below to choose an idea instead.
+        move and Space to put the pen down or lift it (Escape also lifts it). Prefer not to draw? Use the button below
+        to choose what your idea does instead.
       </p>
 
       <div className="tools" role="group" aria-label="Drawing tools">
+        <div className="tool-group" role="radiogroup" aria-label="Tool">
+          {(["draw", "erase"] as const).map((t, i) => (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={tool === t}
+              tabIndex={tool === t ? 0 : -1}
+              className="btn small tool-btn"
+              onKeyDown={radioKeys(2, i, (n) => setTool(n === 0 ? "draw" : "erase"))}
+              onClick={() => setTool(t)}
+            >
+              {t === "draw" ? "Draw" : "Erase"}
+            </button>
+          ))}
+        </div>
         <div className="tool-group" role="radiogroup" aria-label="Crayon color">
           {PALETTE.map((p, i) => (
             <button
@@ -341,12 +424,19 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
               type="button"
               role="radio"
               aria-checked={color === i}
-              tabIndex={color === i ? 0 : -1}
-              onKeyDown={radioKeys(PALETTE.length, color, setColor)}
               aria-label={p.name}
+              title={p.name}
+              tabIndex={color === i ? 0 : -1}
+              onKeyDown={radioKeys(PALETTE.length, color, (n) => {
+                setColor(n);
+                setTool("draw");
+              })}
               className="swatch"
               style={{ ["--swatch" as string]: p.hex }}
-              onClick={() => setColor(i)}
+              onClick={() => {
+                setColor(i);
+                setTool("draw");
+              }}
             />
           ))}
         </div>
@@ -357,9 +447,10 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
               type="button"
               role="radio"
               aria-checked={width === i}
+              aria-label={w.name}
+              title={w.name}
               tabIndex={width === i ? 0 : -1}
               onKeyDown={radioKeys(WIDTHS.length, width, setWidth)}
-              aria-label={w.name}
               className="size"
               onClick={() => setWidth(i)}
             >
@@ -368,20 +459,34 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
           ))}
         </div>
         <div className="tool-group">
-          <button type="button" className="btn small" onClick={undo} disabled={mine === 0}>
+          <button type="button" className="btn small" onClick={undo} disabled={history.past.length === 0}>
             Undo
           </button>
-          <button type="button" className="btn small" onClick={redoOne} disabled={redo.length === 0 || full}>
+          <button type="button" className="btn small" onClick={redo} disabled={history.future.length === 0 || full}>
             Redo
           </button>
-          <button type="button" className="btn small" onClick={clearMine} disabled={mine === 0}>
+          <button type="button" className="btn small" onClick={() => setConfirmClear(true)} disabled={mine.length === 0 || confirmClear}>
             Clear
           </button>
         </div>
       </div>
+      {confirmClear && (
+        <div className="confirm-row" role="group" aria-label="Clear this scene's drawing?">
+          <span>Clear this scene&apos;s drawing?</span>
+          <button type="button" className="btn small danger" onClick={clearMine}>
+            Yes, clear it
+          </button>
+          <button type="button" className="btn small" onClick={() => setConfirmClear(false)}>
+            Keep it
+          </button>
+        </div>
+      )}
       <p className="count" data-testid="line-count">
-        {mine === 0 ? "Nothing drawn yet." : `${mine} ${mine === 1 ? "line" : "lines"} on the page.`}
+        {mine.length === 0 ? "Nothing drawn yet." : `${mine.length} ${mine.length === 1 ? "line" : "lines"} on the page.`}
         {full ? " The page is full. Undo a line to add more." : ""}
+      </p>
+      <p className="fine tool-now" data-testid="tool-now">
+        Now using: {toolText}
       </p>
     </div>
   );

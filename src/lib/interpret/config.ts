@@ -8,8 +8,8 @@ export const DEFAULT_GROQ_MODEL = GROQ_ALLOWED_MODELS[0];
 export const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 export const INTERPRET_LIMITS = {
-  maxBodyChars: 420_000,
-  maxImageBytes: 300_000,
+  maxBodyChars: 560_000,
+  maxImageBytes: 400_000,
   minImageSide: 16,
   maxImageSide: 768,
   timeoutMs: 10_000,

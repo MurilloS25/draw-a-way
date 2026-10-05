@@ -1,7 +1,6 @@
-import type { Round } from "../missions/engine";
+import { CapabilitySchema, normalizeCapabilities, sanitizeLabel, type Capability } from "../capabilities";
+import type { SceneIndex } from "../missions/engine";
 import type { MissionId } from "../missions/types";
-import { exportPngBase64 } from "../drawing/render";
-import type { Stroke } from "../drawing/model";
 import type { InterpretResponse } from "./types";
 
 export interface Capabilities {
@@ -15,8 +14,7 @@ export async function fetchCapabilities(signal?: AbortSignal): Promise<Capabilit
   try {
     const res = await fetch("/api/capabilities", { cache: "no-store", signal });
     if (!res.ok) return NONE;
-    const data: unknown = await res.json();
-    const d = data as Partial<Capabilities>;
+    const d = (await res.json()) as Partial<Capabilities>;
     return d && d.remote === true && (d.source === "fake" || d.source === "groq")
       ? { remote: true, source: d.source }
       : NONE;
@@ -28,15 +26,14 @@ export async function fetchCapabilities(signal?: AbortSignal): Promise<Capabilit
 const REASONS = ["disabled", "rate_limited", "unavailable", "invalid_response", "timeout", "unsure"] as const;
 
 /**
- * Sends one explicitly requested interpretation. Any failure, malformed reply,
- * or cancellation resolves to a fallback; the caller never needs a try/catch.
+ * Sends one explicitly requested interpretation of the composite picture. Any
+ * failure, malformed reply, or cancellation resolves to a fallback; the caller
+ * never needs a try/catch, and re-validates what comes back.
  */
 export async function requestInterpretation(
-  args: { missionId: MissionId; round: Round; firstIdeaId?: string; strokes: readonly Stroke[] },
+  args: { missionId: MissionId; scene: SceneIndex; priorCaps: Capability[]; imageBase64: string },
   signal: AbortSignal,
 ): Promise<InterpretResponse> {
-  const imageBase64 = exportPngBase64(args.strokes);
-  if (!imageBase64) return { status: "fallback", reason: "unavailable" };
   try {
     const res = await fetch("/api/interpret", {
       method: "POST",
@@ -45,20 +42,24 @@ export async function requestInterpretation(
       signal,
       body: JSON.stringify({
         missionId: args.missionId,
-        round: args.round,
-        ...(args.firstIdeaId ? { firstIdeaId: args.firstIdeaId } : {}),
-        imageBase64,
+        scene: args.scene,
+        ...(args.priorCaps.length ? { priorCaps: args.priorCaps } : {}),
+        imageBase64: args.imageBase64,
       }),
     });
     if (!res.ok) return { status: "fallback", reason: "unavailable" };
-    const data = (await res.json()) as Partial<InterpretResponse> & Record<string, unknown>;
-    if (data.status === "ok" && typeof data.candidateId === "string") {
-      return {
-        status: "ok",
-        candidateId: data.candidateId,
-        confidence: data.confidence === "high" || data.confidence === "low" ? data.confidence : "medium",
-        source: data.source === "groq" ? "groq" : "fake",
-      };
+    const data = (await res.json()) as Record<string, unknown>;
+    if (data.status === "ok") {
+      const caps = normalizeCapabilities(data.capabilities);
+      if (caps && caps.every((c) => CapabilitySchema.safeParse(c).success)) {
+        return {
+          status: "ok",
+          capabilities: caps as Capability[],
+          label: sanitizeLabel(data.label),
+          source: data.source === "groq" ? "groq" : "fake",
+        };
+      }
+      return { status: "fallback", reason: "invalid_response" };
     }
     const reason = (REASONS as readonly unknown[]).includes(data.reason) ? (data.reason as (typeof REASONS)[number]) : "unavailable";
     return { status: "fallback", reason };

@@ -540,40 +540,167 @@ p {
 
 .summary {
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
   grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+}
+@media (min-width: 48rem) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .snap {
   margin: 0;
 }
 .snap figcaption {
   display: grid;
-  gap: 0;
+  gap: 0.15rem;
+  margin-top: 0.6rem;
+  font-size: 0.98rem;
+}
+.closing {
+  max-width: 44rem;
+}
+
+/* ---------- capability picker ---------- */
+
+.picker-caps {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+}
+.cap-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.cap-group legend {
+  font-family: var(--display);
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 0.3rem;
+}
+.cap-list {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+}
+.cap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+  min-height: 3rem;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--sheet);
+  cursor: pointer;
+  position: relative;
+}
+.cap input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.cap:has(input:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--marigold);
+}
+.cap.is-on {
+  background: var(--marigold-wash);
+  box-shadow: 0 0 0 3px var(--marigold);
+}
+.cap.is-on .cap-label::after {
+  content: " \2713";
+}
+.cap.is-blocked {
+  border-style: dashed;
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+.cap-icon {
+  flex: none;
+}
+.cap-text {
+  display: grid;
+  min-width: 0;
+}
+.cap-label {
+  font-weight: 700;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.cap-hint {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.cap-status {
+  margin: 0;
+}
+
+/* ---------- banners and inline confirmations ---------- */
+
+.banner {
+  background: var(--marigold-wash);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.banner p {
+  margin: 0 0 0.5rem;
+  max-width: none;
+}
+.banner-actions,
+.confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.confirm-row {
   margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 2px dashed var(--ink);
+  border-radius: 12px;
+  background: var(--sheet);
 }
-.arrow {
-  align-self: center;
+.confirm-row span {
+  font-weight: 700;
 }
-.arrow svg {
-  width: 4rem;
-  height: 2rem;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform: rotate(90deg);
-  display: block;
-  margin: 0 auto;
+.banner-quiet {
+  margin: 0 0 0.5rem;
+  max-width: none;
 }
-@media (min-width: 48rem) {
-  .summary {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-  .arrow svg {
-    transform: none;
-  }
+.tool-btn[aria-checked="true"] {
+  background: var(--ink);
+  color: var(--sheet);
+}
+.recall ul {
+  margin: 0 0 0.8rem;
+  padding-left: 1.2rem;
+  font-size: 0.95rem;
+}
+.recall p {
+  margin-bottom: 0.2rem;
+}
+.tool-now {
+  margin: 0.2rem 0 0;
+}
+.draw-area.tool-erase {
+  cursor: cell;
 }
 
 .footer {
@@ -593,68 +720,57 @@ p {
   transform-box: fill-box;
   transform-origin: 50% 100%;
 }
-
-.scene-river.is-result .hero {
-  transform: translateX(640px);
-  animation: river-cross 4.4s ease-in-out both;
+.scene.is-result .hero {
+  transform: translate(var(--dx), var(--dy));
+  animation: hero-move 4.4s ease-in-out both;
 }
-.scene-river.is-result.motion-bouncy .hero-body {
+.scene.is-result .friend {
+  transform: translate(var(--fx), var(--fy));
+  animation: friend-move 4.4s ease-in-out both;
+}
+.scene.is-result.motion-bouncy .hero-body {
   animation: hop 0.55s ease-in-out 8;
 }
-.scene-river.is-result.motion-float .hero-body {
+.scene.is-result.motion-float .hero-body {
   animation: bob 1.5s ease-in-out 3;
 }
-.scene-river.is-result.motion-swing .hero-body {
+.scene.is-result.motion-swing .hero-body {
   animation: swing 1.4s ease-in-out 3;
 }
 .scene-river.is-result .ripples {
   animation: drift 2s linear 2;
 }
-
-.scene-fog.is-result .hero {
-  transform: translate(700px, -150px);
-  animation: fog-walk 4.8s ease-in-out both;
+.scene.is-result .fog {
+  opacity: var(--weather-end);
+  animation: fade-from-full 4.8s ease-in-out both;
 }
-.scene-fog.is-result.motion-bouncy .hero-body {
-  animation: hop 0.6s ease-in-out 8;
-}
-.scene-fog.is-result.motion-swing .hero-body {
-  animation: swing 1.6s ease-in-out 3;
-}
-.scene-fog.is-result .fog {
-  opacity: 0.15;
-  animation: fog-clear 4.8s ease-in-out both;
-}
-
-.scene-sprout .rain {
-  opacity: 1;
+.scene.is-result .rain,
+.scene.is-result .weather {
+  opacity: var(--weather-end);
+  animation: fade-from-full 3.6s ease-in-out both;
 }
 .scene-sprout.is-result .rain {
-  opacity: 0;
-  animation: rain-fall 0.7s linear 4, rain-fade 0.6s ease-out 2.6s both;
+  animation: rain-fall 0.7s linear 4, fade-from-full 3.2s ease-out both;
 }
-.scene-sprout.is-result .clouds {
-  opacity: 0.45;
-  animation: cloud-fade 3.6s ease-in-out both;
+.scene.is-result .clouds {
+  opacity: 0.55;
+  animation: fade-from-full 3.6s ease-in-out both;
 }
 .scene-sprout.is-result .hero-body {
   animation: sway 1.8s ease-in-out 2;
 }
-.scene-sprout.is-result.motion-bouncy .hero-body {
-  animation: hop 0.7s ease-in-out 4;
-}
 
-@keyframes river-cross {
-  from {
-    transform: translateX(0);
-  }
-}
-@keyframes fog-walk {
+@keyframes hero-move {
   from {
     transform: translate(0, 0);
   }
 }
-@keyframes fog-clear {
+@keyframes friend-move {
+  from {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fade-from-full {
   from {
     opacity: 1;
   }
@@ -696,16 +812,6 @@ p {
   }
   to {
     transform: translateY(24px);
-  }
-}
-@keyframes rain-fade {
-  from {
-    opacity: 1;
-  }
-}
-@keyframes cloud-fade {
-  from {
-    opacity: 1;
   }
 }
 

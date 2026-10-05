@@ -1,4 +1,4 @@
-import { candidatesFor } from "../missions/engine";
+import { UNKNOWN, normalizeCapabilities, sanitizeLabel, type Capability } from "../capabilities";
 import { readConfig, type InterpreterConfig } from "./config";
 import { createFakeInterpreter, parseScenario } from "./fake";
 import { createGroqInterpreter, type FetchLike } from "./groq";
@@ -7,7 +7,6 @@ import { validateRequest } from "./request";
 import {
   InterpretError,
   InterpretationSchema,
-  NO_MATCH,
   type FallbackReason,
   type InterpretResponse,
   type Interpreter,
@@ -44,9 +43,10 @@ function buildInterpreter(deps: ServiceDeps, scenarioHeader: string | null, clie
 
 /**
  * Orchestrates one explicit interpretation request. Always resolves to a
- * child-safe result: either a validated suggestion or a named fallback. The
- * suggestion is only ever a suggestion; the client still asks the child.
- * Nothing here logs, stores, or returns provider text.
+ * child-safe result: a validated functional proposal or a named fallback. The
+ * proposal is only a suggestion; the client still asks the child, and only
+ * what the child confirms changes the story. Nothing here logs, stores, or
+ * returns provider text.
  */
 export async function interpret(
   input: { rawBody: string; contentType: string | null; clientHint: string; scenario: string | null; signal: AbortSignal },
@@ -62,26 +62,27 @@ export async function interpret(
   const interpreter = buildInterpreter(deps, input.scenario, input.clientHint);
   if (!interpreter) return fallback("disabled");
 
-  const { missionId, round, firstIdeaId, imageBase64 } = checked.value;
-  const candidates = candidatesFor(missionId, round, firstIdeaId);
-  if (candidates.length === 0) return { status: 400, body: { error: "bad_request" } };
-
+  const { missionId, scene, priorCaps, imageBase64 } = checked.value;
   if (!deps.limiter.check(input.clientHint).ok) return fallback("rate_limited");
 
   try {
-    const raw = await interpreter.interpret({
-      missionId,
-      round,
-      candidates,
-      imageBase64,
-      signal: input.signal,
-    });
+    const raw = await interpreter.interpret({ missionId, scene, priorCaps, imageBase64, signal: input.signal });
     const parsed = InterpretationSchema.safeParse(raw);
     if (!parsed.success) return fallback("invalid_response");
-    const { candidateId, confidence } = parsed.data;
-    if (candidateId === NO_MATCH) return fallback("unsure");
-    if (!candidates.some((c) => c.id === candidateId)) return fallback("invalid_response");
-    return { status: 200, body: { status: "ok", candidateId, confidence, source: interpreter.name } };
+    const { proposed_affordances, optional_safe_label, confidence, uncertain } = parsed.data;
+    const caps = normalizeCapabilities(proposed_affordances);
+    if (!caps) return fallback("invalid_response");
+    // Low confidence, "unknown", or an uncertain model: ask the child instead of guessing.
+    if (caps.includes(UNKNOWN) || uncertain || confidence === "low") return fallback("unsure");
+    return {
+      status: 200,
+      body: {
+        status: "ok",
+        capabilities: caps as Capability[],
+        label: sanitizeLabel(optional_safe_label),
+        source: interpreter.name,
+      },
+    };
   } catch (error) {
     const kind = error instanceof InterpretError ? error.kind : "unavailable";
     if (kind === "rate_limited") {
