@@ -30,7 +30,15 @@ import {
   startMood,
   type SceneIndex,
 } from "@/lib/missions/engine";
-import { clearAllLocalData, loadSession, readEnvelope, sameState, saveSession, SESSION_KEY } from "@/lib/session/storage";
+import {
+  clearAllLocalData,
+  loadSession,
+  peekSession,
+  readEnvelope,
+  sameState,
+  saveSession,
+  SESSION_KEY,
+} from "@/lib/session/storage";
 import { initialState, priorDecisions, reduce, type Action, type Phase, type SessionState } from "@/lib/session/state";
 
 type GameAction = Action | { type: "restore"; state: SessionState } | { type: "reset" };
@@ -56,7 +64,7 @@ const FAILURE_COPY: Record<FallbackReason, string> = {
   unsure: "The helper was not sure what this is.",
 };
 
-function stepAnnouncement(phase: Phase, scene: number, title: string): string {
+function stepAnnouncement(phase: Phase, scene: number, title: string, resultText?: string): string {
   switch (phase) {
     case "intro":
       return `Adventure: ${title}.`;
@@ -65,7 +73,7 @@ function stepAnnouncement(phase: Phase, scene: number, title: string): string {
     case "describe":
       return `Scene ${scene + 1} of 3. Say what your idea does.`;
     case "result":
-      return `Scene ${scene + 1} of 3. See what happens.`;
+      return `Scene ${scene + 1} of 3. ${resultText ?? "See what happens."}`;
     case "summary":
       return "Your adventure trail.";
   }
@@ -86,11 +94,21 @@ export function Game() {
   const [helper, setHelper] = useState<Helper>({ status: "idle" });
   const [picked, setPicked] = useState<CapabilityOrUnknown[]>([]);
   const [editing, setEditing] = useState(false);
-  const [announcement, setAnnouncement] = useState("");
+  // Two live regions used alternately, so a repeated message is announced again.
+  const [announcements, setAnnouncements] = useState<[string, string]>(["", ""]);
+  const flip = useRef(0);
+  const setAnnouncement = useCallback((m: string) => {
+    flip.current = 1 - flip.current;
+    setAnnouncements(flip.current === 0 ? [m, ""] : ["", m]);
+  }, []);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState<null | "replay" | "next">(null);
   const [conflict, setConflict] = useState<null | { other: SessionState | null }>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  /** Bumped when another tab's version replaces ours, so the canvas drops its undo history. */
+  const [epoch, setEpoch] = useState(0);
+  /** True once this tab owns the stored session (it loaded it, saved it, or the child chose to keep it). */
+  const claimed = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const conflictRef = useRef<HTMLButtonElement>(null);
   const paperColRef = useRef<HTMLElement>(null);
@@ -104,7 +122,7 @@ export function Game() {
   const scene = state.scene;
   const sceneDef = getScene(state.missionId, scene);
   const prior = priorDecisions(state);
-  const announce = useCallback((m: string) => setAnnouncement(m), []);
+  const announce = setAnnouncement;
 
   // Restore an interrupted session, then learn whether an explicit helper exists.
   useEffect(() => {
@@ -112,6 +130,7 @@ export function Game() {
     const saved = loadSession();
     if (saved) {
       dispatch({ type: "restore", state: saved });
+      claimed.current = true;
       lastKey.current = `${saved.missionId}-${saved.phase}-${saved.scene}`;
       setAnnouncement("Welcome back. Your adventure is still here.");
     }
@@ -119,13 +138,23 @@ export function Game() {
     const controller = new AbortController();
     fetchCapabilities(controller.signal).then(setCaps);
     return () => controller.abort();
-  }, []);
+  }, [setAnnouncement]);
 
   // Save after every step once drawing has started. Saving pauses while another tab's change is unresolved.
   useEffect(() => {
     if (!hydrated || conflict || state.phase === "intro") return;
+    if (!claimed.current) {
+      // First save from a tab that did not load the stored session: never replace another tab's adventure silently.
+      const other = peekSession();
+      if (other && other.writer !== tabId.current && !sameState(other.state, state)) {
+        setConflict({ other: other.state });
+        setAnnouncement("Another tab has an adventure in progress. Choose which version to keep.");
+        return;
+      }
+      claimed.current = true;
+    }
     setSaveFailed(!saveSession(state, tabId.current));
-  }, [state, hydrated, conflict]);
+  }, [state, hydrated, conflict, setAnnouncement]);
 
   // Another tab wrote (or erased) the session: never overwrite silently, never merge strokes.
   useEffect(() => {
@@ -134,10 +163,8 @@ export function Game() {
       const env = e.newValue ? readEnvelope(e.newValue) : null;
       if (env && env.writer === tabId.current) return;
       const mine = stateRef.current;
-      if (mine.phase === "intro") {
-        if (env) dispatch({ type: "restore", state: env.state });
-        return;
-      }
+      // A tab still on the first screen has nothing to lose; it is asked at its first save instead.
+      if (mine.phase === "intro") return;
       if (env && sameState(env.state, mine)) return;
       if (!env && e.newValue !== null) return; // unreadable write: ignore, we keep ours
       setConflict({ other: env ? env.state : null });
@@ -145,7 +172,7 @@ export function Game() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [setAnnouncement]);
 
   useEffect(() => {
     if (conflict) conflictRef.current?.focus();
@@ -167,8 +194,13 @@ export function Game() {
     }
     if (lastKey.current === key) return;
     lastKey.current = key;
-    setAnnouncement(stepAnnouncement(state.phase, state.scene, mission.title));
+    const resultText =
+      state.phase === "result" && state.decisions[state.scene]
+        ? resolveScene(state.missionId, state.scene, state.decisions.slice(0, state.scene), state.decisions[state.scene]!).text
+        : undefined;
+    setAnnouncement(stepAnnouncement(state.phase, state.scene, mission.title, resultText));
     headingRef.current?.focus({ preventScroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.missionId, state.phase, state.scene, hydrated, mission.title]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -176,10 +208,35 @@ export function Game() {
   // Keep keyboard focus somewhere sensible when the reset confirmation closes.
   const resetBtn = useRef<HTMLButtonElement>(null);
   const wasConfirming = useRef(false);
+  const resetYes = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (wasConfirming.current && !confirmingReset) resetBtn.current?.focus();
+    if (confirmingReset) resetYes.current?.focus();
+    else if (wasConfirming.current) resetBtn.current?.focus();
     wasConfirming.current = confirmingReset;
   }, [confirmingReset]);
+
+  // The same for the "clear this adventure?" question on the summary.
+  const leaveYes = useRef<HTMLButtonElement>(null);
+  const leaveFirst = useRef<HTMLButtonElement>(null);
+  const wasLeaving = useRef(false);
+  useEffect(() => {
+    if (confirmLeave) leaveYes.current?.focus();
+    else if (wasLeaving.current) leaveFirst.current?.focus();
+    wasLeaving.current = confirmLeave !== null;
+  }, [confirmLeave]);
+
+  // While the helper works, "Ask" is replaced by "Cancel": keep focus on the live control.
+  const cancelBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (helper.status === "loading") cancelBtn.current?.focus();
+  }, [helper.status]);
+
+  /** After a banner or dialog closes, put focus back where the child was working. */
+  const restoreFocus = () =>
+    requestAnimationFrame(() => {
+      const area = document.querySelector<HTMLElement>(".draw-area");
+      (area ?? headingRef.current)?.focus();
+    });
 
   const setStrokes = useCallback((strokes: Stroke[]) => dispatch({ type: "setStrokes", strokes }), []);
 
@@ -191,6 +248,7 @@ export function Game() {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    setEditing(false);
     setHelper({ status: "loading" });
     setAnnouncement("The helper is looking at your picture.");
     let timedOut = false;
@@ -199,15 +257,17 @@ export function Game() {
       controller.abort();
     }, 15000);
     const backdrop = paperColRef.current?.querySelector<SVGSVGElement>("svg.scene") ?? null;
-    const image = await exportCompositeBase64({
-      backdrop,
-      structure: layers.structure,
-      companion: layers.companion,
-      companionAt: compAt,
-      current: currentStrokes,
-    });
-    const result = image
-      ? await requestInterpretation(
+    let result: Awaited<ReturnType<typeof requestInterpretation>> = { status: "fallback", reason: "unavailable" };
+    try {
+      const image = await exportCompositeBase64({
+        backdrop,
+        structure: layers.structure,
+        companions: layers.companions,
+        companionAt: compAt,
+        current: currentStrokes,
+      });
+      if (image) {
+        result = await requestInterpretation(
           {
             missionId: state.missionId,
             scene,
@@ -215,15 +275,19 @@ export function Game() {
             imageBase64: image,
           },
           controller.signal,
-        )
-      : ({ status: "fallback", reason: "unavailable" } as const);
-    clearTimeout(timeout);
+        );
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
     // Ignore the answer if the child cancelled, moved on, or started over meanwhile.
     if (abortRef.current !== controller || (controller.signal.aborted && !timedOut)) return;
     abortRef.current = null;
     if (result.status === "ok") {
       setHelper({ status: "suggested", caps: result.capabilities, label: result.label });
-      setAnnouncement("The helper has a guess. Please check it.");
+      setAnnouncement(
+        `The helper has a guess: your ${thingName(result.label, false).replace("your ", "")} can ${describeCapabilities(result.capabilities)}. Is that what you meant?`,
+      );
     } else {
       setHelper({ status: "failed", reason: timedOut ? "timeout" : result.reason });
       setAnnouncement("The helper could not tell. Your drawing is safe. You can tell us what your idea does.");
@@ -246,8 +310,10 @@ export function Game() {
     setConfirmingReset(false);
     setConflict(null);
     lastKey.current = "river-intro-0";
+    claimed.current = false;
+    setEpoch((e) => e + 1);
     setAnnouncement("Everything was erased. Starting fresh.");
-    headingRef.current?.focus();
+    requestAnimationFrame(() => headingRef.current?.focus());
   };
 
   const leaveSummary = (kind: "replay" | "next") => {
@@ -257,15 +323,20 @@ export function Game() {
 
   const keepMine = () => {
     setConflict(null);
+    restoreFocus();
+    claimed.current = true;
     setSaveFailed(!saveSession(stateRef.current, tabId.current));
     setAnnouncement("Kept this tab's version.");
   };
   const useOther = () => {
     const other = conflict?.other;
     setConflict(null);
+    restoreFocus();
     if (other) {
       lastKey.current = `${other.missionId}-${other.phase}-${other.scene}`;
       dispatch({ type: "restore", state: other });
+      claimed.current = true;
+      setEpoch((e) => e + 1);
       setAnnouncement("Loaded the newest version.");
     } else {
       startOver();
@@ -314,7 +385,11 @@ export function Game() {
             className="btn primary"
             aria-disabled={needsLine}
             aria-describedby={needsLine ? "action-hint" : undefined}
-            onClick={() => !needsLine && dispatch({ type: "finishDrawing" })}
+            onClick={() =>
+              needsLine
+                ? announce("Draw a line first, or choose what your idea does without drawing.")
+                : dispatch({ type: "finishDrawing" })
+            }
           >
             I&apos;m done drawing
           </button>
@@ -345,6 +420,7 @@ export function Game() {
                 onClick={() => {
                   setPicked(suggested.caps);
                   setEditing(true);
+                  requestAnimationFrame(() => headingRef.current?.focus());
                 }}
               >
                 No, let me change it
@@ -357,7 +433,9 @@ export function Game() {
                 className="btn primary"
                 aria-disabled={needsPick}
                 aria-describedby={needsPick ? "action-hint" : undefined}
-                onClick={() => normalized && dispatch({ type: "confirm", caps: normalized })}
+                onClick={() =>
+                  normalized ? dispatch({ type: "confirm", caps: normalized }) : announce("Pick one or two things first.")
+                }
               >
                 That&apos;s what it does
               </button>
@@ -385,7 +463,7 @@ export function Game() {
       )}
       {showSummary && !confirmLeave && (
         <>
-          <button type="button" className="btn primary" onClick={() => setConfirmLeave("next")}>
+          <button ref={leaveFirst} type="button" className="btn primary" onClick={() => setConfirmLeave("next")}>
             Try another adventure
           </button>
           <button type="button" className="btn" onClick={() => setConfirmLeave("replay")}>
@@ -395,12 +473,23 @@ export function Game() {
       )}
       {showSummary && confirmLeave && (
         <div className="confirm-row" role="group" aria-label="Clear this adventure?">
-          <span>This clears your drawings from this adventure. Keep going?</span>
-          <button type="button" className="btn small danger" onClick={() => leaveSummary(confirmLeave)}>
+          <span>This clears your drawings from this adventure.</span>
+          <button
+            ref={leaveYes}
+            type="button"
+            className="btn small danger"
+            onClick={() => leaveSummary(confirmLeave)}
+            onKeyDown={(e) => e.key === "Escape" && setConfirmLeave(null)}
+          >
             {confirmLeave === "replay" ? "Yes, clear them and play again" : "Yes, clear them and go on"}
           </button>
-          <button type="button" className="btn small" onClick={() => setConfirmLeave(null)}>
-            Not yet
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setConfirmLeave(null)}
+            onKeyDown={(e) => e.key === "Escape" && setConfirmLeave(null)}
+          >
+            No, keep my drawings
           </button>
         </div>
       )}
@@ -420,6 +509,7 @@ export function Game() {
           {confirmingReset ? (
             <>
               <button
+                ref={resetYes}
                 type="button"
                 className="btn small danger"
                 onClick={startOver}
@@ -449,7 +539,7 @@ export function Game() {
           <p>
             <strong>Another tab changed this adventure.</strong>{" "}
             {conflict.other
-              ? "It has a different version. Lines are never mixed together, so pick one."
+              ? "It has a different version. Lines are never mixed together, so pick one. Keeping this one replaces the other."
               : "It started over. Pick what happens here."}
           </p>
           <div className="banner-actions">
@@ -535,7 +625,9 @@ export function Game() {
                       ? `What does your idea help ${hero} do?`
                       : state.skippedDrawing
                         ? "Pick up to two things your idea can do."
-                        : "Nothing here looks at your drawing, so you tell us. Pick up to two things your idea can do."}
+                        : caps.remote
+                          ? "Pick up to two things your idea can do, or ask the helper for a guess."
+                          : "Nothing here looks at your drawing, so you tell us. Pick up to two things your idea can do."}
                   </p>
                   <CapabilityPicker selected={picked} onChange={setPicked} disabled={helper.status === "loading"} />
                 </>
@@ -546,15 +638,15 @@ export function Game() {
                   {helper.status === "loading" ? (
                     <>
                       <p role="status">The helper is looking at your picture…</p>
-                      <button type="button" className="btn small" onClick={cancelHelper}>
+                      <button ref={cancelBtn} type="button" className="btn small" onClick={cancelHelper}>
                         Cancel
                       </button>
                     </>
                   ) : (
                     <>
                       <p className="fine" id="helper-note">
-                        This sends a small copy of the scene and your lines to an online helper. We do not keep it, and the helper
-                        service may keep it for a short time. You always decide what your idea does.
+                        This sends a small copy of the scene and your lines to an online helper. We do not keep it. The helper
+                        service may keep it for a short while. You always decide what your idea does.
                       </p>
                       <button type="button" className="btn small" onClick={askHelper} aria-describedby="helper-note">
                         Ask the helper to look
@@ -599,7 +691,7 @@ export function Game() {
             <Summary state={state} />
           ) : state.phase === "draw" ? (
             <DrawingCanvas
-              key={`${state.missionId}-${scene}`}
+              key={`${state.missionId}-${scene}-${epoch}`}
               strokes={state.strokes}
               scene={scene}
               onChange={setStrokes}
@@ -638,8 +730,13 @@ export function Game() {
         </p>
       </footer>
 
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="announcer">
-        {announcement}
+      <div className="sr-only" data-testid="announcer">
+        <div role="status" aria-live="polite" aria-atomic="true">
+          {announcements[0]}
+        </div>
+        <div role="status" aria-live="polite" aria-atomic="true">
+          {announcements[1]}
+        </div>
       </div>
     </div>
   );

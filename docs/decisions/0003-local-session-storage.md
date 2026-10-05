@@ -1,6 +1,6 @@
 # One versioned local storage key holding simplified strokes
 
-- Status: accepted
+- Status: accepted (key and shape updated by ADR 0008: now `drawaway:session:v2`)
 - Date: 2026-10-05
 
 ## Context

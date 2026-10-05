@@ -193,6 +193,81 @@ test.describe("accessibility and layout", () => {
     await expect(page.getByRole("button", { name: "Start over" })).toBeFocused();
   });
 
+  test("confirmations move focus in and out without a mouse", async ({ page }) => {
+    await open(page);
+    // Start over
+    await page.getByRole("button", { name: "Start over" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Yes, erase and start over" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Start over" })).toBeFocused();
+    // Clear
+    await page.getByRole("button", { name: "Start drawing" }).press("Enter");
+    await page.getByRole("application").focus();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Space");
+    await page.getByRole("button", { name: "Clear", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Yes, clear it" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("application")).toBeFocused();
+    await expect(page.getByTestId("line-count")).toHaveText("1 line on the page.");
+  });
+
+  test("the summary confirmation takes focus and gives it back", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    for (let i = 0; i < 3; i++) {
+      await page.getByRole("button", { name: "Choose without drawing" }).click();
+      await page.getByRole("checkbox", { name: /Float/ }).check();
+      await page.getByRole("button", { name: "That's what it does" }).click();
+      if (i < 2) await page.getByRole("button", { name: "Next scene" }).click();
+    }
+    await page.getByRole("button", { name: "See my adventure" }).click();
+    await page.getByRole("button", { name: "Play this adventure again" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Yes, clear them and play again" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Try another adventure" })).toBeFocused();
+  });
+
+  test("a repeated status message is announced again", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    await page.getByRole("application").focus();
+    const announcer = page.getByTestId("announcer");
+    for (let i = 0; i < 2; i++) {
+      await page.keyboard.press("Space");
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Space");
+    }
+    await expect(announcer).toContainText("Line added. 2 on the page.");
+    await page.getByRole("button", { name: "Undo" }).click();
+    await page.getByRole("button", { name: "Redo" }).click();
+    await page.getByRole("button", { name: "Undo" }).click();
+    // The same text twice in a row lands in alternating live regions.
+    const regions = announcer.locator("[role=status]");
+    expect((await regions.allInnerTexts()).filter(Boolean)).toEqual(["Undone."]);
+  });
+
+  test("strokes keep a light casing so every crayon shows on every scene", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    await page.getByRole("radio", { name: "Sun yellow" }).click();
+    await drawStroke(page, [
+      [0.5, 0.7],
+      [0.62, 0.7],
+    ]);
+    await page.getByRole("button", { name: "I'm done drawing" }).click();
+    const paths = page.locator(".strokes-layer path");
+    // Two paths per line: the light casing under the crayon colour.
+    expect(await paths.count()).toBe(2);
+    await expect(paths.first()).toHaveAttribute("stroke", "#ffffff");
+  });
+
   test("tool, color, and size radios use arrow keys and state is never color alone", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();

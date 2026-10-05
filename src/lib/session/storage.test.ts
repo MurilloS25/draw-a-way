@@ -7,6 +7,7 @@ import {
   loadSession,
   parseSession,
   readEnvelope,
+  sameState,
   saveSession,
   serializeSession,
 } from "./storage";
@@ -132,6 +133,13 @@ describe("session persistence v2", () => {
     localStorage.setItem(SESSION_KEY, "{broken");
     expect(loadSession()).toBeNull();
     expect(localStorage.getItem(SESSION_KEY)).toBeNull();
+  });
+
+  it("compares sessions regardless of key order", () => {
+    const a = state({ strokes: [{ c: 0, w: 1, s: 0, p: [1, 2], pr: 40 }] });
+    const b = state({ strokes: [{ pr: 40, p: [1, 2], s: 0, w: 1, c: 0 }] });
+    expect(sameState(a, b)).toBe(true);
+    expect(sameState(a, state())).toBe(false);
   });
 
   it("start over removes every drawaway key and nothing else", () => {

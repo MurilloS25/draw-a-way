@@ -1,17 +1,20 @@
+import { companionSlot } from "./layers";
 import { CANVAS_H, CANVAS_W, PALETTE, strokeWidthPx, type Stroke } from "./model";
 
-/** Paints one stroke (or the newest segments of one) onto a 2D context. */
-export function paintStroke(
+/** Extra width (logical units) of the light casing that keeps any crayon visible on any scene. */
+export const CASING = 6;
+
+function trace(
   ctx: CanvasRenderingContext2D,
-  stroke: Pick<Stroke, "c" | "w" | "p" | "pr">,
+  p: readonly number[],
   scale: number,
-  fromIndex = 0,
+  fromIndex: number,
+  color: string,
+  width: number,
 ): void {
-  const p = stroke.p;
-  if (p.length < 2) return;
-  ctx.strokeStyle = PALETTE[stroke.c]?.hex ?? PALETTE[0].hex;
-  ctx.fillStyle = ctx.strokeStyle;
-  ctx.lineWidth = strokeWidthPx(stroke) * scale;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width * scale;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const single = p.length === 2 || (p.length === 4 && p[0] === p[2] && p[1] === p[3]);
@@ -30,15 +33,39 @@ export function paintStroke(
   ctx.stroke();
 }
 
+/**
+ * Paints one stroke (or the newest segments of one) onto a 2D context. With
+ * `casing`, a soft white line goes underneath first. Live segments are painted
+ * without it so earlier segments are not overpainted; the full repaint adds it.
+ */
+export function paintStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: Pick<Stroke, "c" | "w" | "p" | "pr">,
+  scale: number,
+  fromIndex = 0,
+  casing = false,
+): void {
+  const p = stroke.p;
+  if (p.length < 2) return;
+  const width = strokeWidthPx(stroke);
+  if (casing) {
+    ctx.save();
+    ctx.globalAlpha *= 0.75;
+    trace(ctx, p, scale, fromIndex, "#ffffff", width + CASING);
+    ctx.restore();
+  }
+  trace(ctx, p, scale, fromIndex, PALETTE[stroke.c]?.hex ?? PALETTE[0].hex, width);
+}
+
 export function paintAll(ctx: CanvasRenderingContext2D, strokes: readonly Stroke[], scale: number): void {
-  for (const s of strokes) paintStroke(ctx, s, scale);
+  for (const s of strokes) paintStroke(ctx, s, scale, 0, true);
 }
 
 export interface CompositeInput {
   /** The scene backdrop element, or null to leave it out. */
   backdrop: SVGSVGElement | null;
   structure: readonly Stroke[];
-  companion: readonly Stroke[];
+  companions: readonly (readonly Stroke[])[];
   companionAt: { x: number; y: number; scale: number };
   current: readonly Stroke[];
 }
@@ -78,6 +105,15 @@ function loadSvg(svg: SVGSVGElement): Promise<HTMLImageElement | null> {
  * re-encode carries no metadata. Returns base64 without a data URL prefix.
  */
 export async function exportCompositeBase64(input: CompositeInput): Promise<string | null> {
+  try {
+    return await buildComposite(input);
+  } catch {
+    // A tainted or unsupported canvas must never leave the helper flow hanging.
+    return null;
+  }
+}
+
+async function buildComposite(input: CompositeInput): Promise<string | null> {
   if (typeof document === "undefined") return null;
   const width = COMPOSITE_WIDTH;
   const height = Math.round((width * CANVAS_H) / CANVAS_W);
@@ -93,14 +129,18 @@ export async function exportCompositeBase64(input: CompositeInput): Promise<stri
     const img = await loadSvg(input.backdrop);
     if (img) ctx.drawImage(img, 0, 0, width, height);
   }
+  // Same look as the screen: structures at 90% strength, companions as miniatures beside the character.
+  ctx.save();
+  ctx.globalAlpha = 0.9;
   paintAll(ctx, input.structure, scale);
-  if (input.companion.length) {
-    const { x, y, scale: cs } = input.companionAt;
+  ctx.restore();
+  input.companions.forEach((group, i) => {
+    const { x, y, scale: cs } = companionSlot(input.companionAt, i);
     ctx.save();
     ctx.translate(x * scale, y * scale);
-    paintAll(ctx, input.companion, scale * cs);
+    paintAll(ctx, group, scale * cs);
     ctx.restore();
-  }
+  });
   paintAll(ctx, input.current, scale);
   const url = canvas.toDataURL("image/png");
   const prefix = "data:image/png;base64,";

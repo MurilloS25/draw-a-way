@@ -66,6 +66,15 @@ describe("session reducer: three scenes", () => {
     expect(s.decisions.map((d) => d.skipped)).toEqual([true, true, true]);
   });
 
+  it("refuses oversize or malformed stroke lists and finishing with nothing drawn", () => {
+    const drawing = run([{ type: "startDrawing" }]);
+    expect(reduce(drawing, { type: "finishDrawing" })).toBe(drawing);
+    const many = Array.from({ length: 151 }, () => stroke(0));
+    expect(reduce(drawing, { type: "setStrokes", strokes: many })).toBe(drawing);
+    expect(reduce(drawing, { type: "setStrokes", strokes: [{ c: 0, w: 0, s: 0, p: [5000, 5] }] })).toBe(drawing);
+    expect(reduce(drawing, { type: "setStrokes", strokes: [stroke(0)] }).strokes).toHaveLength(1);
+  });
+
   it("ignores actions in the wrong phase", () => {
     const s = initialState();
     for (const a of [

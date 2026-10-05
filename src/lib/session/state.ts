@@ -1,5 +1,5 @@
 import { normalizeCapabilities, sanitizeLabel, type CapabilityOrUnknown } from "../capabilities";
-import { canAddStroke, type Stroke } from "../drawing/model";
+import { canAddStroke, StrokesSchema, type Stroke } from "../drawing/model";
 import { isMissionId, nextMissionId, SCENE_COUNT, type Decision, type SceneIndex } from "../missions/engine";
 import type { MissionId } from "../missions/types";
 
@@ -53,11 +53,12 @@ export function reduce(state: SessionState, action: Action): SessionState {
       const next = action.strokes;
       const keptEarlier = next.filter((s) => s.s < state.scene);
       if (next.some((s) => s.s > state.scene)) return state;
+      if (!StrokesSchema.safeParse(next).success) return state;
       if (keptEarlier.length !== earlier.length || keptEarlier.some((s, i) => s !== earlier[i])) return state;
       return { ...state, strokes: next };
     }
     case "finishDrawing":
-      return state.phase === "draw" ? { ...state, phase: "describe" } : state;
+      return state.phase === "draw" && state.strokes.some((s) => s.s === state.scene) ? { ...state, phase: "describe" } : state;
     case "chooseWithoutDrawing":
       return state.phase === "draw"
         ? { ...state, phase: "describe", skippedDrawing: !state.strokes.some((s) => s.s === state.scene) }

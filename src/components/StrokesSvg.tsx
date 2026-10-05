@@ -1,20 +1,17 @@
-import type { PersistentLayers } from "@/lib/drawing/layers";
+import { companionSlot, type PersistentLayers } from "@/lib/drawing/layers";
 import { PALETTE, strokeToPath, strokeWidthPx, type Stroke } from "@/lib/drawing/model";
+
+/** A soft light casing under each line keeps every crayon colour visible on any scene. */
+const CASING = 6;
 
 function Paths({ strokes, opacity = 1 }: { strokes: readonly Stroke[]; opacity?: number }) {
   return (
     <>
       {strokes.map((s, i) => (
-        <path
-          key={i}
-          d={strokeToPath(s.p)}
-          fill="none"
-          stroke={PALETTE[s.c]?.hex}
-          strokeWidth={strokeWidthPx(s)}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={opacity}
-        />
+        <g key={i} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
+          <path d={strokeToPath(s.p)} stroke="#ffffff" strokeOpacity={0.75} strokeWidth={strokeWidthPx(s) + CASING} />
+          <path d={strokeToPath(s.p)} stroke={PALETTE[s.c]?.hex} strokeWidth={strokeWidthPx(s)} />
+        </g>
       ))}
     </>
   );
@@ -42,7 +39,7 @@ export function PersistentSvg({
   companionAt: { x: number; y: number; scale: number };
   className?: string;
 }) {
-  if (!layers.structure.length && !layers.companion.length) return null;
+  if (!layers.structure.length && !layers.companions.length) return null;
   return (
     <svg
       className={className}
@@ -53,11 +50,14 @@ export function PersistentSvg({
       data-testid="persistent-layer"
     >
       <Paths strokes={layers.structure} opacity={0.9} />
-      {layers.companion.length > 0 && (
-        <g transform={`translate(${companionAt.x} ${companionAt.y}) scale(${companionAt.scale})`}>
-          <Paths strokes={layers.companion} />
-        </g>
-      )}
+      {layers.companions.map((group, i) => {
+        const at = companionSlot(companionAt, i);
+        return (
+          <g key={i} transform={`translate(${at.x} ${at.y}) scale(${at.scale})`}>
+            <Paths strokes={group} />
+          </g>
+        );
+      })}
     </svg>
   );
 }

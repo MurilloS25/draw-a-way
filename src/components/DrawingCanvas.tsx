@@ -62,6 +62,15 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
   const [penDown, setPenDown] = useState(false);
   const [focused, setFocused] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const clearYes = useRef<HTMLButtonElement>(null);
+  const pointerLive = useRef(false);
+  useEffect(() => {
+    if (confirmClear) clearYes.current?.focus();
+  }, [confirmClear]);
+  const closeClear = () => {
+    setConfirmClear(false);
+    areaRef.current?.focus();
+  };
 
   // Latest values for the native listeners below.
   const latest = useRef({ strokes, scene, color, width, tool, onChange, onAnnounce, history, cursor });
@@ -123,7 +132,8 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
     (raw: number[], pressure?: number) => {
       const { strokes: current, scene: s, color: c, width: w } = latest.current;
       // Never exceed the total point limit, or the saved session could not be restored.
-      const p = normalizePoints(raw).slice(0, Math.max(0, pointsLeft(current)) * 2);
+      const all = normalizePoints(raw);
+      const p = all.slice(0, Math.max(0, pointsLeft(current)) * 2);
       if (p.length < 2) return;
       if (!canAddStroke(current)) {
         latest.current.onAnnounce("The page is full. Undo a line to add more.");
@@ -132,7 +142,11 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
       }
       const stroke: Stroke = { c, w, s, p, ...(pressure ? { pr: pressure } : {}) };
       apply([...current, stroke], record(latest.current.history, { type: "add", stroke }));
-      latest.current.onAnnounce(`Line added. ${current.filter((x) => x.s === s).length + 1} on the page.`);
+      latest.current.onAnnounce(
+        p.length < all.length
+          ? "The page is nearly full, so the end of that line was cut short."
+          : `Line added. ${current.filter((x) => x.s === s).length + 1} on the page.`,
+      );
     },
     [apply, repaint],
   );
@@ -218,6 +232,7 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
       if (e.pointerType === "mouse" && e.button !== 0) return;
       e.preventDefault();
       activeId = e.pointerId;
+      pointerLive.current = true;
       penPointer = e.pointerType === "pen";
       livePressure.current = { sum: 0, n: 0 };
       try {
@@ -248,6 +263,7 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
     const finish = (e: PointerEvent, cancelled: boolean) => {
       if (e.pointerId !== activeId) return;
       activeId = null;
+      pointerLive.current = false;
       const points = live.current;
       if (!cancelled) extend(e);
       live.current = null;
@@ -358,6 +374,7 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
       }
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
+        if (pointerLive.current) return;
         if (live.current) {
           lift();
         } else if (!e.repeat) {
@@ -494,14 +511,20 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
           <button type="button" className="btn small" onClick={undo} disabled={history.past.length === 0}>
             Undo
           </button>
-          <button type="button" className="btn small" onClick={redo} disabled={history.future.length === 0 || full}>
+          <button
+            type="button"
+            className="btn small"
+            onClick={redo}
+            disabled={history.future.length === 0 || (full && history.future.at(-1)?.type === "add")}
+          >
             Redo
           </button>
           <button
             type="button"
             className="btn small"
             onClick={() => setConfirmClear(true)}
-            disabled={mine.length === 0 || confirmClear}
+            disabled={mine.length === 0}
+            aria-expanded={confirmClear}
           >
             Clear
           </button>
@@ -510,10 +533,19 @@ export function DrawingCanvas({ strokes, scene, onChange, onAnnounce, layers }: 
       {confirmClear && (
         <div className="confirm-row" role="group" aria-label="Clear this scene's drawing?">
           <span>Clear this scene&apos;s drawing?</span>
-          <button type="button" className="btn small danger" onClick={clearMine}>
+          <button
+            ref={clearYes}
+            type="button"
+            className="btn small danger"
+            onClick={() => {
+              clearMine();
+              areaRef.current?.focus();
+            }}
+            onKeyDown={(e) => e.key === "Escape" && closeClear()}
+          >
             Yes, clear it
           </button>
-          <button type="button" className="btn small" onClick={() => setConfirmClear(false)}>
+          <button type="button" className="btn small" onClick={closeClear} onKeyDown={(e) => e.key === "Escape" && closeClear()}>
             Keep it
           </button>
         </div>

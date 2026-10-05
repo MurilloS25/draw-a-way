@@ -20,11 +20,11 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await page.getByRole("button", { name: "Start drawing" }).click();
     await drawAndDescribe(page);
     await expect(ask(page)).toBeVisible();
-    await expect(page.getByText(/sends a small copy of the scene/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/sends a small copy of the scene/)).toBeVisible();
     expect(calls).toHaveLength(0);
 
     await ask(page).click();
-    await expect(page.getByText(/I think your .* can .*Is that what you meant\?/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/I think your .* can .*Is that what you meant\?/)).toBeVisible();
     expect(calls).toHaveLength(1);
     await expect(page.getByRole("heading", { name: "Here is what happens" })).toHaveCount(0);
     await page.getByRole("button", { name: "Yes, that's it" }).click();
@@ -42,7 +42,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await page.getByRole("checkbox", { name: /Hold things in place/ }).check();
     await page.getByRole("checkbox", { name: /Send a signal/ }).check();
     await page.getByRole("button", { name: "That's what it does" }).click();
-    await expect(page.getByText(/It can also send a signal/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/It can also send a signal/)).toBeVisible();
   });
 
   for (const [name, text] of [
@@ -61,7 +61,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
       await page.getByRole("button", { name: "Start drawing" }).click();
       await drawAndDescribe(page);
       await ask(page).click();
-      await expect(page.getByText(text).first()).toBeVisible();
+      await expect(page.locator("#main").getByText(text).first()).toBeVisible();
       expect(await page.getByRole("checkbox").count()).toBeGreaterThan(10);
       await page.getByRole("button", { name: /Keep drawing/ }).click();
       await expect(page.getByTestId("line-count")).toHaveText("1 line on the page.");
@@ -86,7 +86,12 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await page.getByRole("button", { name: "Start drawing" }).click();
     await drawAndDescribe(page);
     await ask(page).click();
-    await expect(page.getByText(/looking at your picture/).first()).toBeVisible();
+    await expect(
+      page
+        .locator("#main")
+        .getByText(/looking at your picture/)
+        .first(),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Cancel" }).click();
     await expect(ask(page)).toBeVisible();
     expect(await page.getByRole("checkbox").count()).toBeGreaterThan(10);
@@ -100,7 +105,12 @@ test.describe("explicit helper with the deterministic fake provider", () => {
       await page.getByRole("button", { name: "Start drawing" }).click();
       await drawAndDescribe(page);
       await ask(page).click();
-      await expect(page.getByText(/Your drawing is safe/).first()).toBeVisible();
+      await expect(
+        page
+          .locator("#main")
+          .getByText(/Your drawing is safe/)
+          .first(),
+      ).toBeVisible();
     });
   });
 
@@ -115,7 +125,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await page.getByRole("button", { name: "Start drawing" }).click();
     await drawAndDescribe(page);
     await ask(page).click();
-    await expect(page.getByText(/I think your/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/I think your/)).toBeVisible();
 
     const first = bodies[0]!;
     expect(Object.keys(first).sort()).toEqual(["imageBase64", "missionId", "scene"]);
@@ -172,7 +182,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     ]);
     await page.getByRole("button", { name: "I'm done drawing" }).click();
     await ask(page).click();
-    await expect(page.getByText(/I think your/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/I think your/)).toBeVisible();
 
     const second = bodies[0]!;
     expect(second.scene).toBe(1);
@@ -201,7 +211,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await drawStroke(page, ARC);
     await page.getByRole("button", { name: "I'm done drawing" }).click();
     await ask(page).click();
-    await expect(page.getByText(/I think your/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/I think your/)).toBeVisible();
     await page.getByRole("button", { name: "No, let me change it" }).click();
     expect(await page.getByRole("checkbox").count()).toBe(15);
   });

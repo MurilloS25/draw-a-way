@@ -48,7 +48,19 @@ export function companionAt(missionId: MissionId, scene: SceneIndex): { x: numbe
 
 export interface PersistentLayers {
   structure: Stroke[];
-  companion: Stroke[];
+  /** One group of strokes per companion idea, oldest first. */
+  companions: Stroke[][];
+}
+
+/** Where the nth companion goes: beside the previous one, never on top of it. */
+export function companionSlot(base: { x: number; y: number; scale: number }, index: number) {
+  const step = CANVAS_W * base.scale + 12;
+  const x = clamp(base.x - index * step, 10, CANVAS_W - CANVAS_W * base.scale - 10);
+  return {
+    x: x === 10 && index > 0 ? clamp(base.x + index * step, 10, CANVAS_W - CANVAS_W * base.scale - 10) : x,
+    y: base.y,
+    scale: base.scale,
+  };
 }
 
 /** Earlier strokes that remain visible in this scene, split by how they persist. */
@@ -58,10 +70,11 @@ export function persistentLayers(
   strokes: readonly Stroke[],
   scene: number,
 ): PersistentLayers {
-  const layers: PersistentLayers = { structure: [], companion: [] };
+  const layers: PersistentLayers = { structure: [], companions: [] };
   for (const k of persistentKinds(missionId, decisions, scene)) {
     const mine = strokes.filter((s) => s.s === k.scene);
-    (k.kind === "structure" ? layers.structure : layers.companion).push(...mine);
+    if (k.kind === "structure") layers.structure.push(...mine);
+    else layers.companions.push(mine);
   }
   return layers;
 }

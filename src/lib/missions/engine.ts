@@ -166,6 +166,8 @@ export function keepNote(missionId: MissionId, index: SceneIndex, prior: readonl
   const hero = getMission(missionId).hero;
   const keeps = resolveScene(missionId, index, prior, decision).keeps;
   const thing = thingName(decision.label);
+  // A decision made without drawing leaves nothing on the page; only the story remembers it.
+  if (decision.skipped) return `The story remembers what ${thing} did.`;
   if (keeps === "structure") return `${thing.charAt(0).toUpperCase()}${thing.slice(1)} stays in the story.`;
   if (keeps === "companion") return `${thing.charAt(0).toUpperCase()}${thing.slice(1)} comes along with ${hero}.`;
   return `The story remembers what ${thing} did.`;
@@ -204,8 +206,8 @@ export function buildSummary(missionId: MissionId, decisions: readonly Decision[
   if (fulls >= 2)
     closing = `Your ideas worked well together, and ${mission.hero} finished the adventure with things in good shape.`;
   else if (neutrals >= 2)
-    closing = `Your ideas took the story to places we did not plan. That is what made this adventure yours.`;
-  else closing = `Some ideas solved the problem and some left room to grow. ${mission.hero} kept going every time.`;
+    closing = `Several ideas did not change the problem this time, but ${mission.hero} kept going, and the story remembered each one.`;
+  else closing = `Some ideas helped a lot and some helped a little. ${mission.hero} kept going every time.`;
 
   const counts = new Map<Capability, number>();
   for (const d of decisions) for (const c of realCaps(d.caps)) counts.set(c, (counts.get(c) ?? 0) + 1);
@@ -213,9 +215,7 @@ export function buildSummary(missionId: MissionId, decisions: readonly Decision[
   if (repeated)
     closing += ` You came back to the idea of how to ${CAPABILITY_META[repeated].phrase} more than once, and the story remembered.`;
 
-  const keepIndex = decisions.findIndex(
-    (d, i) => i < 2 && resolveScene(missionId, i as SceneIndex, decisions.slice(0, i), d).keeps === "structure",
-  );
+  const keepIndex = persistentKinds(missionId, decisions, 2).find((k) => k.kind === "structure")?.scene ?? -1;
   if (keepIndex >= 0) {
     closing += ` ${thingName(decisions[keepIndex]!.label, true)} from scene ${keepIndex + 1} stayed in the story.`;
   }

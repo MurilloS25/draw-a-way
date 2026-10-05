@@ -6,13 +6,13 @@ test.describe("provider-free adventures (production build)", () => {
     await page.getByRole("button", { name: "Start drawing" }).click();
     await expect(page.getByRole("heading", { name: "Scene 1: The wide river" })).toBeFocused();
     await playScene(page, [/Join two places/, /Hold weight/]);
-    await expect(page.getByText(/joins the two sides/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/joins the two sides/)).toBeVisible();
     await expect(page.getByTestId("persistent-layer")).toHaveCount(0);
     await nextScene(page);
 
     await expect(page.getByRole("heading", { name: "Scene 2: The river rushes" })).toBeFocused();
-    await expect(page.getByText(/Your first idea still spans the water/)).toBeVisible();
-    await expect(page.getByText(/Scene 1: Your invention could join two places and hold weight/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Your first idea is still by the river/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Scene 1: Your invention could join two places and hold weight/)).toBeVisible();
     // The earlier structure stays in the scene as its own layer.
     await expect(page.getByTestId("persistent-layer")).toHaveCount(1);
     await playScene(
@@ -35,7 +35,7 @@ test.describe("provider-free adventures (production build)", () => {
         [0.6, 0.7],
       ],
     );
-    await expect(page.getByText(/floating ride/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/floating ride/)).toBeVisible();
     await page.getByRole("button", { name: "See my adventure" }).click();
 
     await expect(page.getByRole("heading", { name: "Your adventure trail" })).toBeFocused();
@@ -44,7 +44,7 @@ test.describe("provider-free adventures (production build)", () => {
     await expect(steps.nth(0)).toContainText("Your invention could join two places and hold weight.");
     await expect(steps.nth(1)).toContainText("Your invention could hold things in place.");
     await expect(steps.nth(2)).toContainText("could carry someone and float.");
-    await expect(page.getByText(/stayed in the story/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/stayed in the story/)).toBeVisible();
   });
 
   test("the other two adventures complete with different outcomes", async ({ page }) => {
@@ -52,12 +52,15 @@ test.describe("provider-free adventures (production build)", () => {
     await page.getByRole("button", { name: "The windy hill" }).click();
     await page.getByRole("button", { name: "Start drawing" }).click();
     await playScene(page, [/Give shelter/]);
-    await expect(page.getByText(/rain rolls away/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/rain rolls away/)).toBeVisible();
     await nextScene(page);
     await playScene(page, [/Deliver or store things/]);
     await nextScene(page);
     await expect(
-      page.getByText(/Your first idea kept Sprig safe|strong and happy|still a bit bumped|The sun is warm/).first(),
+      page
+        .locator("#main")
+        .getByText(/Your first idea kept Sprig safe|strong and happy|still a bit bumped|The sun is warm/)
+        .first(),
     ).toBeVisible();
     await playScene(page, [/Give light/]);
     await page.getByRole("button", { name: "See my adventure" }).click();
@@ -68,12 +71,12 @@ test.describe("provider-free adventures (production build)", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Lights in the fog" })).toBeVisible();
     await page.getByRole("button", { name: "Start drawing" }).click();
     await playScene(page, [/Give light/]);
-    await expect(page.getByText(/Bix sees it through the mist/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Bix sees it through the mist/)).toBeVisible();
     await nextScene(page);
-    await expect(page.getByText(/Your lights glow near a fork/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Your lights glow near a fork/)).toBeVisible();
     await playScene(page, [/Mark a path/, /Hold weight/]);
     await nextScene(page);
-    await expect(page.getByText(/could help Rue see the way down/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/could help Rue see the way down/)).toBeVisible();
     await playScene(page, [/Carry someone/]);
     await page.getByRole("button", { name: "See my adventure" }).click();
     await expect(page.locator("li.step")).toHaveCount(3);
@@ -90,11 +93,11 @@ test.describe("provider-free adventures (production build)", () => {
 
     await page.getByRole("button", { name: "Start drawing" }).click();
     await playSceneNoDraw(page, [/Carry someone/]);
-    await expect(page.getByText(/Mossy climbs aboard your invention/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Mossy climbs aboard your invention/)).toBeVisible();
     await nextScene(page);
     const rideStory = await page.locator(".note .story").innerText();
     expect(rideStory).not.toEqual(bridgeStory);
-    await expect(page.getByText(/Your first idea waits by the bank/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Your first idea waits by the bank/)).toBeVisible();
   });
 
   test("an unexpected invention: a giraffe bridge is a capability, not a lookup", async ({ page }) => {
@@ -112,15 +115,15 @@ test.describe("provider-free adventures (production build)", () => {
         [0.6, 0.5],
       ],
     );
-    await expect(page.getByText(/Mossy reaches the berry bush/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Mossy reaches the berry bush/)).toBeVisible();
   });
 
   test("something else: an idea we did not name still continues with respect", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Start drawing" }).click();
     await playScene(page, [/Something else/]);
-    await expect(page.getByText(/does something nobody expected/)).toBeVisible();
-    await expect(page.getByText(/Mossy watches it do its own thing/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/do not have a name for/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/The river stays wide for now/)).toBeVisible();
     await nextScene(page);
     await expect(page.getByRole("heading", { name: "Scene 2: The river rushes" })).toBeVisible();
   });
@@ -132,7 +135,7 @@ test.describe("provider-free adventures (production build)", () => {
     await page.getByRole("checkbox", { name: /Float/ }).check();
     await page.getByRole("checkbox", { name: /Fly/ }).check();
     await expect(page.getByRole("checkbox", { name: /Roll/ })).toBeDisabled();
-    await expect(page.getByText(/That is two/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/That is two/)).toBeVisible();
     await page.getByRole("checkbox", { name: /Something else/ }).check();
     await expect(page.getByRole("checkbox", { name: /Float/ })).not.toBeChecked();
   });
@@ -150,8 +153,8 @@ test.describe("provider-free adventures (production build)", () => {
     }
     await page.getByRole("button", { name: "See my adventure" }).press("Enter");
     await expect(page.locator("li.step")).toHaveCount(3);
-    await expect(page.getByText("Chosen without drawing.")).toHaveCount(3);
-    await expect(page.getByText(/came back to the idea of how to float/)).toBeVisible();
+    await expect(page.locator("#main").getByText("Chosen without drawing.")).toHaveCount(3);
+    await expect(page.locator("#main").getByText(/came back to the idea of how to float/)).toBeVisible();
   });
 
   test("keyboard drawing, eraser, undo/redo, and clear with confirmation", async ({ page }) => {
@@ -176,7 +179,7 @@ test.describe("provider-free adventures (production build)", () => {
     await expect(page.getByTestId("line-count")).toHaveText("1 line on the page.");
 
     await page.getByRole("button", { name: "Clear", exact: true }).click();
-    await expect(page.getByText("Clear this scene's drawing?")).toBeVisible();
+    await expect(page.locator("#main").getByText("Clear this scene's drawing?")).toBeVisible();
     await page.getByRole("button", { name: "Keep it" }).click();
     await expect(page.getByTestId("line-count")).toHaveText("1 line on the page.");
     await page.getByRole("button", { name: "Clear", exact: true }).click();
@@ -276,7 +279,7 @@ test.describe("provider-free adventures (production build)", () => {
     await nextScene(page);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Scene 2: The river rushes" })).toBeVisible();
-    await expect(page.getByText(/Scene 1: Your invention could float/)).toBeVisible();
+    await expect(page.locator("#main").getByText(/Scene 1: Your invention could float/)).toBeVisible();
 
     await page.getByRole("button", { name: "Start over" }).click();
     await page.getByRole("button", { name: "Yes, erase and start over" }).click();
@@ -296,8 +299,8 @@ test.describe("provider-free adventures (production build)", () => {
     await playScene(page, [/Carry someone/]);
     await page.getByRole("button", { name: "See my adventure" }).click();
     await page.getByRole("button", { name: "Play this adventure again" }).click();
-    await expect(page.getByText(/This clears your drawings from this adventure/)).toBeVisible();
-    await page.getByRole("button", { name: "Not yet" }).click();
+    await expect(page.locator("#main").getByText(/This clears your drawings from this adventure/)).toBeVisible();
+    await page.getByRole("button", { name: "No, keep my drawings" }).click();
     await expect(page.getByRole("heading", { name: "Your adventure trail" })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("heading", { name: "Your adventure trail" })).toBeVisible();

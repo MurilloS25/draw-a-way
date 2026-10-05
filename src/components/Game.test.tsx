@@ -35,6 +35,8 @@ beforeEach(() => {
     ({ x: 0, y: 0, left: 0, top: 0, width: 1000, height: 700, right: 1000, bottom: 700, toJSON() {} }) as DOMRect;
 });
 
+/** Text may also sit in the live region, so accept more than one match. */
+const seen = (re: RegExp) => expect(screen.getAllByText(re).length).toBeGreaterThan(0);
 const button = (name: string | RegExp) => screen.getByRole("button", { name });
 const pick = async (user: User, ...labels: (string | RegExp)[]) => {
   for (const l of labels) await user.click(screen.getByRole("checkbox", { name: l }));
@@ -80,19 +82,19 @@ describe("three-scene flow", () => {
     expect(button("I'm done drawing")).toHaveAttribute("aria-disabled", "true");
     await playScene(user, /Join two places/, /Hold weight/);
     expect(screen.getByRole("heading", { name: "Here is what happens" })).toBeInTheDocument();
-    expect(screen.getByText(/joins the two sides/)).toBeInTheDocument();
-    expect(screen.getByText("Your invention stays in the story.")).toBeInTheDocument();
+    seen(/joins the two sides/);
+    expect(screen.getByText("The story remembers what your invention did.")).toBeInTheDocument();
     await user.click(button("Next scene"));
 
     expect(screen.getByRole("heading", { name: "Scene 2: The river rushes" })).toBeInTheDocument();
-    expect(screen.getByText(/Your first idea still spans the water/)).toBeInTheDocument();
+    expect(screen.getByText(/Your first idea is still by the river/)).toBeInTheDocument();
     expect(screen.getByText(/Scene 1: Your invention could join two places and hold weight/)).toBeInTheDocument();
     await playScene(user, /Hold things in place/);
     await user.click(button("Next scene"));
 
     expect(screen.getByRole("heading", { name: "Scene 3: Peeping on the rock" })).toBeInTheDocument();
     await playScene(user, /Carry someone/, /Float/);
-    expect(screen.getByText(/floating ride/)).toBeInTheDocument();
+    seen(/floating ride/);
     await user.click(button("See my adventure"));
 
     expect(screen.getByRole("heading", { name: "Your adventure trail" })).toBeInTheDocument();
@@ -101,7 +103,7 @@ describe("three-scene flow", () => {
     expect(steps[0]).toHaveTextContent("Scene 1: The wide river");
     expect(steps[0]).toHaveTextContent("Your invention could join two places and hold weight.");
     expect(steps[0]).toHaveTextContent("Chosen without drawing.");
-    expect(screen.getByText(/stayed in the story/)).toBeInTheDocument();
+    expect(screen.queryByText(/stayed in the story/)).toBeNull();
   });
 
   it("two different paths through the same adventure read differently", async () => {
@@ -110,16 +112,16 @@ describe("three-scene flow", () => {
     let user = await startDrawing();
     await playScene(user, /Join two places/);
     await user.click(button("Next scene"));
-    const a = screen.getByText(/Rain upstream|Your first idea/).textContent;
+    const a = screen.getAllByText(/Rain upstream|Your first idea/)[0]!.textContent;
     first.unmount();
     localStorage.clear();
 
     render(<Game />);
     user = await startDrawing();
     await playScene(user, /Give light/);
-    expect(screen.getByText(/Mossy watches it do its own thing/)).toBeInTheDocument();
+    seen(/The river stays wide for now/);
     await user.click(button("Next scene"));
-    const b = screen.getByText(/Rain upstream|Your first idea/).textContent;
+    const b = screen.getAllByText(/Rain upstream|Your first idea/)[0]!.textContent;
     expect(a).not.toEqual(b);
   });
 
@@ -137,7 +139,7 @@ describe("three-scene flow", () => {
     expect(screen.getByRole("checkbox", { name: /Something else/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Float/ })).not.toBeChecked();
     await user.click(button("That's what it does"));
-    expect(screen.getByText(/nobody expected/)).toBeInTheDocument();
+    seen(/do not have a name for/);
   });
 
   it("an unknown idea continues with a neutral, respectful result", async () => {
@@ -145,7 +147,7 @@ describe("three-scene flow", () => {
     render(<Game />);
     const user = await startDrawing();
     await playScene(user, /Something else/);
-    expect(screen.getByText(/Mossy watches it do its own thing/)).toBeInTheDocument();
+    seen(/The river stays wide for now/);
     expect(screen.getByRole("button", { name: "Next scene" })).toBeInTheDocument();
   });
 });
@@ -280,7 +282,7 @@ describe("persistence", () => {
 
     await user.click(button("Play this adventure again"));
     expect(screen.getByText(/This clears your drawings from this adventure/)).toBeInTheDocument();
-    await user.click(button("Not yet"));
+    await user.click(button("No, keep my drawings"));
     expect(screen.getByRole("heading", { name: "Your adventure trail" })).toBeInTheDocument();
     expect(localStorage.getItem(SESSION_KEY)).not.toBeNull();
 
@@ -335,14 +337,35 @@ describe("two tabs", () => {
     expect(screen.getByTestId("line-count")).toHaveTextContent("Nothing drawn yet.");
   });
 
-  it("an echo of this tab's own write, or a tab in the intro, causes no prompt", async () => {
+  it("a tab still on the first screen is asked at its first save, never overwriting silently", async () => {
     mockFetch(manual);
     render(<Game />);
+    const theirs = otherTab();
     act(() => {
-      window.dispatchEvent(new StorageEvent("storage", { key: SESSION_KEY, newValue: otherTab() }));
+      localStorage.setItem(SESSION_KEY, theirs);
+      window.dispatchEvent(new StorageEvent("storage", { key: SESSION_KEY, newValue: theirs }));
     });
-    // A fresh intro has nothing to lose, so it simply adopts the other tab's session.
-    expect(await screen.findByRole("heading", { name: "Scene 1: Lost in the mist" })).toBeInTheDocument();
+    // Nothing happens to the intro screen itself.
+    expect(screen.getByRole("heading", { level: 1, name: "Across the river" })).toBeInTheDocument();
+    expect(screen.queryByTestId("tab-conflict")).toBeNull();
+    const user = userEvent.setup();
+    await user.click(button("Start drawing"));
+    expect(await screen.findByTestId("tab-conflict")).toBeInTheDocument();
+    expect(localStorage.getItem(SESSION_KEY)).toBe(theirs);
+    await user.click(button("Use the newest version"));
+    expect(screen.getByRole("heading", { name: "Scene 1: Lost in the mist" })).toBeInTheDocument();
+  });
+
+  it("an echo of this tab's own write causes no prompt", async () => {
+    mockFetch(manual);
+    render(<Game />);
+    const user = await startDrawing();
+    await drawWithKeyboard(user);
+    await waitFor(() => expect(localStorage.getItem(SESSION_KEY)).not.toBeNull());
+    const own = localStorage.getItem(SESSION_KEY);
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: SESSION_KEY, newValue: own }));
+    });
     expect(screen.queryByTestId("tab-conflict")).toBeNull();
   });
 
@@ -416,7 +439,18 @@ describe("explicit helper (fake provider)", () => {
     // The label belonged to the helper's guess, so it is dropped once the child changes it.
     expect(screen.getByText(/Your invention/)).toBeInTheDocument();
     expect(screen.queryByText(/big fish/)).toBeNull();
-    expect(screen.getByText(/It can also fly/)).toBeInTheDocument();
+    seen(/It can also fly/);
+  });
+
+  it("a second helper answer is shown even after the child chose to change the first", async () => {
+    mockFetch(remote(ok(["floats"])));
+    render(<Game />);
+    const user = await startDrawing();
+    await toDescribe(user);
+    await user.click(await screen.findByRole("button", { name: "Ask the helper to look" }));
+    await user.click(await screen.findByRole("button", { name: "No, let me change it" }));
+    await user.click(button("Ask the helper to look"));
+    expect(await screen.findByText(/I think your invention can float/)).toBeInTheDocument();
   });
 
   it("an unsure helper says so honestly and the child chooses", async () => {

@@ -1,6 +1,6 @@
 # Interpretation boundary, honest manual fallback, server-only Groq
 
-- Status: accepted
+- Status: accepted (the candidate list is superseded by ADR 0005 and the image by ADR 0007)
 - Date: 2026-10-05
 
 ## Context

@@ -109,6 +109,17 @@ export function parseSession(text: string | null, now = Date.now()): SessionStat
   return readEnvelope(text, now)?.state ?? null;
 }
 
+/** Reads the stored envelope without deleting anything. */
+export function peekSession(now = Date.now()): Envelope | null {
+  const storage = getStorage();
+  if (!storage) return null;
+  try {
+    return readEnvelope(storage.getItem(SESSION_KEY), now);
+  } catch {
+    return null;
+  }
+}
+
 export function loadSession(now = Date.now()): SessionState | null {
   const storage = getStorage();
   if (!storage) return null;
@@ -153,7 +164,25 @@ export function clearAllLocalData(): void {
   }
 }
 
+/** Key-order independent JSON, so equal sessions compare equal however their objects were built. */
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    return (
+      "{" +
+      Object.keys(o)
+        .filter((k) => o[k] !== undefined)
+        .sort()
+        .map((k) => JSON.stringify(k) + ":" + stable(o[k]))
+        .join(",") +
+      "}"
+    );
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 /** Whether two states are the same session content (used to ignore echoes of our own saves). */
 export function sameState(a: SessionState, b: SessionState): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return stable(a) === stable(b);
 }

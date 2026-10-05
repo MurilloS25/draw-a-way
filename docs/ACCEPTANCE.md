@@ -1,8 +1,9 @@
-# Manual acceptance
+# Manual acceptance (round 2: three-scene adventures)
 
-Automated checks passed, but no human has used this yet. Use a desktop browser
-and, if possible, a phone or tablet on the same machine's loopback via browser
-device emulation (the server only listens on 127.0.0.1).
+Round 1 (a human check of the first MVP) found it clear, simple, and pleasant, and
+the flow worked. It did not test real interpretation and made no Groq calls. This
+round tests the new three-scene adventures. Automated checks passed; no human has
+used this version yet.
 
 ## Start
 
@@ -22,42 +23,48 @@ Stop the server with Ctrl+C (or stop only the process id you started).
 
 ## Checklist
 
-1. **Immediate start.** The first screen is a mission with a clear "Start
-   drawing" button. No sign-in, form, or question appears.
-2. **Mission 1, river.** Draw a bridge shape across the water. Press "I'm done
-   drawing". Read the confirm text: it says the app cannot see the drawing and
-   asks you to choose. Pick "A bridge", press "That's my idea". See the snail
-   cross. Press "Try a change", add a line, choose "Add a rail to hold",
-   and finish at "Your story trail". Check both pictures and the ending text.
-3. **Mission 2, windy hill** and **Mission 3, fog.** Choose them from the
-   buttons on the first screen (or "Try another mission" at the end). Complete
-   each with a different idea than before and confirm the consequence text is
-   different.
-4. **No drawing.** Start a mission, press "Choose an idea without drawing" and
-   complete both rounds without touching the canvas. Repeat with only the
-   keyboard (Tab, Enter, Space, arrow keys).
-5. **Keyboard drawing.** Tab to the drawing area. Press Space (pen down), use
-   arrows (Shift for bigger steps), Space again (pen up). Undo with the button
-   or Ctrl+Z.
-6. **Undo, Redo, Clear.** Clear, then Redo to bring lines back.
-7. **Touch and pen** if available: draw with a finger or stylus; the page must
-   not scroll while drawing.
-8. **Resume.** Draw a line, reload the page: the line is still there. Open the
-   browser's storage view and confirm a single key, `drawaway:session:v1`.
-9. **Start over.** Press "Start over", then "Yes, erase and start over". The
-   mission restarts and the storage key is gone.
-10. **Fallback.** With the fake mode, press "Ask the helper to look"
-    on the confirm step: a suggestion appears; try both "Yes, that's it" and
-    "No, I'll choose". With default mode, no helper button exists and nothing
-    is sent (check the network tab: only requests to 127.0.0.1).
-11. **Zoom and size.** Zoom to 200% and 400%, and resize to 320 px wide: no
-    sideways scrolling, controls reachable.
-12. **Reduced motion.** Turn on "reduce motion" in your OS: the consequence
-    appears without movement.
-13. **Screen reader** (if available): stage changes are announced and focus
-    moves to each new heading.
+1. **One full adventure.** Pick "Across the river". Draw a bridge shape, press
+   "I'm done drawing", pick "Join two places" and "Hold weight", then "That's what it
+   does". Watch Mossy cross and read what stays in the story. Press "Next scene":
+   the problem changes (wind, a faster river), the story mentions your first idea,
+   and your drawing is still on the scene. Finish scene 2 and scene 3 and read the
+   "Your adventure trail" page: it should make sense with your eyes closed (it is
+   fully written).
+2. **A different route.** Start over, pick "Carry someone" in scene 1. Scene 2
+   should read differently and your idea should travel with Mossy as a small
+   picture instead of staying put.
+3. **Other adventures.** Play "The windy hill" and "Lights in the fog" once each.
+4. **An unexpected idea.** Draw something odd (a giraffe, a rocket with floats). Say
+   what it does with one or two choices. The story should accept it.
+5. **Unknown.** Choose "Something else". The story should continue respectfully.
+6. **Correct yourself.** Pick two capabilities, then unpick one and pick another.
+   Try to pick a third: it should explain that two is the limit.
+7. **No drawing.** In each scene use "Choose without drawing". All three scenes
+   must work, and the summary says "Chosen without drawing."
+8. **Canvas tools.** Try colors, sizes, Erase (it removes whole lines, only in the
+   current scene), Undo, Redo, and Clear (asks first). Draw with a finger or stylus
+   if you have one; the page must not scroll while drawing. With a keyboard: Tab to
+   the drawing area, Space (pen down), arrows (Shift for bigger steps), Space again.
+   The line "Now using" always says which tool is active.
+9. **Resume.** Reload in the middle of any scene: you land where you were and the
+   app says "Welcome back". In browser storage there is one key,
+   `drawaway:session:v2`.
+10. **Two tabs.** Open the app in two tabs, draw in one, then change something in
+    the other. The first tab should ask which version to keep and never mix lines.
+11. **Replay.** At the end press "Play this adventure again": it warns that
+    drawings will be cleared. "Not yet" keeps everything.
+12. **Start over.** "Start over" asks, then erases; the storage key is gone.
+13. **Helper (fake mode).** After drawing, "Ask the helper to look" proposes
+    capabilities ("I think your ... can ... Is that what you meant?"). Try "Yes,
+    that's it" and "No, let me change it". In default mode there is no helper button
+    and nothing is sent (network tab: only requests to 127.0.0.1).
+14. **Zoom and size.** 200% and 400% zoom, a 320 px wide window, a phone in
+    landscape: no sideways scrolling and the main action stays reachable.
+15. **Reduced motion.** With "reduce motion" on, consequences appear without movement.
+16. **Screen reader** (if available): scene changes are announced and focus moves
+    to each new heading; the capability choices read as checkboxes.
 
 ## Report
 
-Note anything confusing for a child, copy that sounds wrong, or anything that
-asked for personal information (it should not).
+Anything confusing for a child, copy that sounds wrong, ideas that the story
+handled badly, or anything that asked for personal information (it should not).

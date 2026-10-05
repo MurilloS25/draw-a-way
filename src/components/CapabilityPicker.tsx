@@ -41,7 +41,7 @@ export function CapabilityPicker({ selected, onChange, disabled }: Props) {
         <CapabilityIcon id={id} />
         <span className="cap-text">
           <span className="cap-label">{CAPABILITY_META[id].label}</span>
-          <span className="cap-hint sr-only">{CAPABILITY_META[id].hint}</span>
+          <span className="cap-hint">{CAPABILITY_META[id].hint}</span>
         </span>
       </label>
     );
@@ -56,13 +56,13 @@ export function CapabilityPicker({ selected, onChange, disabled }: Props) {
         </fieldset>
       ))}
       <fieldset className="cap-group">
-        <legend>Not sure?</legend>
+        <legend>Something different</legend>
         <div className="cap-list">{option(UNKNOWN)}</div>
       </fieldset>
       <p className="fine cap-status" role="status">
         {selected.length === 0
           ? "Pick one or two things your idea can do."
-          : `Your idea can ${describeCapabilities(selected)}.${full ? " That is two. Unpick one to change." : ""}`}
+          : `Your idea can ${describeCapabilities(selected)}.${full ? " That is two. Tap one again to remove it." : ""}`}
       </p>
     </div>
   );

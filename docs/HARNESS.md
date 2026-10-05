@@ -9,13 +9,14 @@
 - `change-reviewer`: read-only review of completed work.
 - `docs/plans/` and `docs/decisions/`: durable reasoning outside standing context.
 
-## Commands (each was run successfully during the MVP work)
+## Commands (each was run successfully)
 
 Setup: `npm install`, then `npx playwright install chromium` once.
 
 | Purpose                                                                                        | Command                                        |
 | ---------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | Dev server (loopback)                                                                          | `npm run dev`                                  |
+| Format check / write                                                                           | `npm run format:check` / `npm run format`      |
 | Lint                                                                                           | `npm run lint`                                 |
 | Types                                                                                          | `npm run typecheck`                            |
 | Unit + component tests (Vitest, jsdom)                                                         | `npm test`                                     |

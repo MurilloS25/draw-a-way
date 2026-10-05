@@ -106,6 +106,8 @@ describe("capabilities", () => {
   it("vets decorative labels and drops anything odd", () => {
     expect(sanitizeLabel("Giraffe Bridge")).toBe("giraffe bridge");
     expect(sanitizeLabel("  big   fish ")).toBe("big fish");
+    expect(sanitizeLabel("rocket")).toBe("rocket");
+    expect(sanitizeLabel("flying zebra")).toBeNull(); // only listed words
     const bad = [
       "",
       "a",
@@ -115,6 +117,12 @@ describe("capabilities", () => {
       "<script>",
       "rocket 9000",
       "a b c d",
+      "stupid baby",
+      "so dumb",
+      "ugly dog",
+      "you are great",
+      "big fish and a kite",
+      "naughty bridge",
       "http://evil.example",
       "system prompt",
       "click here",
@@ -143,7 +151,7 @@ describe("resolveScene", () => {
   it("handles unknown with a dignified neutral result", () => {
     const r = resolveScene("sprout", 0, [], dec([UNKNOWN]));
     expect(r.level).toBe("neutral");
-    expect(r.text).toContain("nobody expected");
+    expect(r.text).toContain("do not have a name for");
   });
 
   it("combines two capabilities and adds interesting combination lines", () => {
@@ -249,6 +257,12 @@ describe("persistence of effects and summary", () => {
     expect(keepNote("river", 1, [ds[0]!], ds[1]!)).toBe("Your invention comes along with Mossy.");
   });
 
+  it("never claims a no-drawing idea stays on the page", () => {
+    const skipped = [dec(["connects_places"], null, true), dec(["anchors"], null, true), dec(["carries_someone"], null, true)];
+    expect(keepNote("river", 0, [], skipped[0]!)).toBe("The story remembers what your invention did.");
+    expect(buildSummary("river", skipped).closing).not.toContain("stayed in the story");
+  });
+
   it("summarizes three decisions in text, readable without the drawings", () => {
     const ds = [dec(["connects_places", "supports_weight"], "giraffe bridge"), dec(["anchors"]), dec(["carries_someone"])];
     const s = buildSummary("river", ds);
@@ -263,6 +277,6 @@ describe("persistence of effects and summary", () => {
     const repeated = buildSummary("fog", [dec(["lights_area"]), dec(["lights_area"]), dec([UNKNOWN])]);
     expect(repeated.closing).toContain("give light");
     const surprising = buildSummary("sprout", [dec([UNKNOWN]), dec([UNKNOWN]), dec(["delivers"])]);
-    expect(surprising.closing).toContain("places we did not plan");
+    expect(surprising.closing).toContain("did not change the problem");
   });
 });

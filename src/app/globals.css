@@ -645,6 +645,24 @@ p {
   font-size: 0.85rem;
   color: var(--ink-soft);
 }
+/* The one-line hint shows for the option being looked at or chosen; it stays readable by screen readers always. */
+.cap-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.cap.is-on .cap-hint,
+.cap:has(input:focus-visible) .cap-hint,
+.cap:hover .cap-hint {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  white-space: normal;
+}
 .cap-status {
   margin: 0;
 }
@@ -845,6 +863,37 @@ p {
 }
 
 /* The describe step keeps its main action in view while the child scrolls the choices. */
+html {
+  scroll-padding-bottom: 9rem;
+}
+@media (max-height: 34rem) {
+  html {
+    scroll-padding-bottom: 0;
+  }
+  .note .actions.in-note {
+    position: static;
+  }
+}
+
+.banner {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  max-width: 42rem;
+  margin: 0 auto;
+  z-index: 30;
+  box-shadow: 0 8px 24px -8px rgba(31, 42, 92, 0.5);
+}
+
+@media (min-width: 62rem) {
+  .shell[data-phase="describe"] .paper-col {
+    position: sticky;
+    top: 0.75rem;
+    align-self: start;
+  }
+}
+
 .note .actions.in-note {
   position: sticky;
   bottom: 0;

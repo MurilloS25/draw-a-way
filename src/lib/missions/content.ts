@@ -32,12 +32,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Mossy reaches the berry bush and takes a big, happy sniff.",
           partial: "Mossy gets close to the berries. One more step would make it all the way.",
-          neutral: "Mossy watches it do its own thing. The river is still wide, but Mossy has a new idea of what could happen.",
+          neutral: "The river stays wide for now, so Mossy waits and thinks of another way. The story goes on.",
         },
         recap: {
           full: "Mossy reached the berries.",
           partial: "Mossy got close to the berries.",
-          neutral: "It surprised everyone, and the story went on.",
+          neutral: "The river stayed wide, and Mossy kept thinking.",
         },
       },
       {
@@ -49,7 +49,7 @@ export const MISSIONS: readonly Mission[] = [
           {
             ifAnyPrior: ["connects_places", "supports_weight"],
             story:
-              "Your first idea still spans the water, but the wind makes it wobble. Mossy wants to carry berries home to the left bank without slipping.",
+              "Your first idea is still by the river, but the wind makes it wobble. Mossy wants to carry berries home to the left bank without slipping.",
           },
           {
             ifAnyPrior: ["carries_someone", "floats", "flies", "rolls"],
@@ -78,7 +78,7 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Mossy crosses home steady and dry, berries safe. The wind just blows past.",
           partial: "Mossy makes it across, wobbling a little and holding the berries tight. It worked, and it could be steadier.",
-          neutral: "Your idea does something surprising, and Mossy waits for a calmer moment. The berries are safe for now.",
+          neutral: "The wind is still strong, so Mossy waits safely for calmer weather. The berries are fine for now.",
         },
         recap: {
           full: "Mossy got home steady and dry.",
@@ -123,12 +123,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Pip hops aboard and is soon safe on the shore. Mossy and Pip share the berries.",
           partial: "Pip is not alone any more, and help is close. Mossy and Pip wait together near the shore.",
-          neutral: "Pip peeps happily at your surprising idea. Mossy stays close until the river calms down.",
+          neutral: "Pip keeps peeping while Mossy stays close and waits for the river to calm down.",
         },
         recap: {
           full: "Pip got safely to shore.",
           partial: "Pip had company and help was close.",
-          neutral: "Pip cheered on a surprising idea.",
+          neutral: "Mossy stayed close until the river calmed.",
         },
       },
     ],
@@ -156,12 +156,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "The wind rushes past and the rain rolls away. Sprig stays dry and upright.",
           partial: "Sprig is better off than before, though a few gusts still get through.",
-          neutral: "Your idea does something unexpected on the hill. The weather passes, and Sprig is still there.",
+          neutral: "The weather passes over the hill, and Sprig is still there afterwards.",
         },
         recap: {
           full: "Sprig stayed dry and upright.",
           partial: "Sprig was better off, with a few gusts left.",
-          neutral: "Sprig came through, with a surprise on the hill.",
+          neutral: "Sprig came through the weather.",
         },
       },
       {
@@ -201,12 +201,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Sprig arrives on the sunny slope without a single bump and turns toward the light.",
           partial: "Sprig reaches the sun and feels a few bumps on the way. It is tired but happy.",
-          neutral: "Your idea does something surprising while the mud dries. Sprig soaks up a little sun where it is.",
+          neutral: "Sprig stays where it is while the mud dries, and soaks up a little sun.",
         },
         recap: {
           full: "Sprig reached the sun smoothly.",
           partial: "Sprig reached the sun, a bit bumped.",
-          neutral: "Sprig found some sun in a surprising way.",
+          neutral: "Sprig got a little sun where it was.",
         },
       },
       {
@@ -245,12 +245,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Sprig sleeps warm and steady under the stars. By morning it has a brand new leaf.",
           partial: "Sprig has a chilly night, and morning comes. It is still there, and it stands a bit taller.",
-          neutral: "Your idea glimmers in the dark in a way nobody expected. Sprig makes it to the morning.",
+          neutral: "Sprig makes it to the morning, a little chilly and ready for a new day.",
         },
         recap: {
           full: "Sprig grew a new leaf overnight.",
           partial: "Sprig made it through a chilly night.",
-          neutral: "Sprig made it to morning, with a surprise.",
+          neutral: "Sprig made it to morning.",
         },
       },
     ],
@@ -279,12 +279,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Bix sees it through the mist and walks toward the village. The way feels clear.",
           partial: "Bix can tell which direction might be right and walks on, carefully.",
-          neutral: "Bix does not know quite what to make of it, but it is interesting. Bix keeps going slowly.",
+          neutral: "Bix keeps walking slowly and carefully through the mist.",
         },
         recap: {
           full: "Bix could see the way.",
           partial: "Bix found a likely direction.",
-          neutral: "Bix kept going, curious about a surprise.",
+          neutral: "Bix kept going, slowly.",
         },
       },
       {
@@ -324,12 +324,12 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Bix picks the right path and steps over the gap. The village roofs appear through the mist.",
           partial: "Bix takes a careful step at the gap and keeps going. The village is a little closer.",
-          neutral: "Your idea does something surprising at the fork. Bix waits, then follows the sound of the stream.",
+          neutral: "Bix waits at the fork, then follows the sound of the stream, one careful step at a time.",
         },
         recap: {
           full: "Bix chose well and crossed the gap.",
           partial: "Bix moved on, a little closer to the village.",
-          neutral: "Bix followed a surprise and waited.",
+          neutral: "Bix followed the stream, carefully.",
         },
       },
       {
@@ -364,7 +364,7 @@ export const MISSIONS: readonly Mission[] = [
         outcome: {
           full: "Rue comes down the hill safe and sound, and Bix opens the village gate. Everybody is home.",
           partial: "Rue starts down the hill with Bix close by. They reach the gate slowly, side by side.",
-          neutral: "Rue is curious about your surprising idea. Bix and Rue wait together until the fog thins.",
+          neutral: "Rue and Bix wait together until the fog thins.",
         },
         recap: {
           full: "Rue got home safe.",
