@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     {
       rawBody,
       contentType: req.headers.get("content-type"),
-      clientHint: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local",
+      // Forwarded-for headers are client-controlled, so they are not trusted: one shared bucket.
+      clientHint: "all",
       scenario: config.mode === "fake" ? req.headers.get("x-fake-scenario") : null,
       signal: req.signal,
     },

@@ -61,6 +61,19 @@ describe("session reducer", () => {
     expect(s.strokes).toHaveLength(1);
   });
 
+  it("drawing after choosing without drawing clears the skipped flag", () => {
+    const s = run([
+      { type: "startDrawing" },
+      { type: "chooseWithoutDrawing" },
+      { type: "backToDrawing" },
+      { type: "setStrokes", strokes: [stroke] },
+      { type: "finishDrawing" },
+    ]);
+    expect(s.skippedDrawing).toBe(false);
+    const drawn = run([{ type: "startDrawing" }, { type: "setStrokes", strokes: [stroke] }, { type: "chooseWithoutDrawing" }]);
+    expect(drawn.skippedDrawing).toBe(false);
+  });
+
   it("switches missions only from the intro", () => {
     expect(reduce(initialState(), { type: "selectMission", missionId: "fog" }).missionId).toBe("fog");
     const drawing = run([{ type: "startDrawing" }]);

@@ -52,9 +52,11 @@ export function reduce(state: SessionState, action: Action): SessionState {
     case "finishDrawing":
       return state.phase === "draw" ? { ...state, phase: "confirm" } : state;
     case "chooseWithoutDrawing":
-      return state.phase === "draw" ? { ...state, phase: "confirm", skippedDrawing: true } : state;
+      return state.phase === "draw"
+        ? { ...state, phase: "confirm", skippedDrawing: !state.strokes.some((s) => s.r === state.round) }
+        : state;
     case "backToDrawing":
-      return state.phase === "confirm" ? { ...state, phase: "draw" } : state;
+      return state.phase === "confirm" ? { ...state, phase: "draw", skippedDrawing: false } : state;
     case "confirm": {
       if (state.phase !== "confirm") return state;
       if (!isCandidate(state.missionId, state.round, state.ideaId, action.candidateId)) return state;

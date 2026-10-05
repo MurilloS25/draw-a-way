@@ -11,8 +11,9 @@ The adapter is implemented (`src/lib/interpret/groq.ts`) and tested with a fake
    token limits for the model you will use. Set `INTERPRET_PER_DAY` well below
    them. (This repository never verified the numbers.)
 3. Confirm the model id in Groq's docs. The allowlist in
-   `src/lib/interpret/config.ts` currently holds `qwen/qwen3.8-27b`, taken from
-   Groq's vision docs on 2026-10-05. Changing it is a code change on purpose.
+   `src/lib/interpret/config.ts` currently holds `qwen/qwen3.8-27b`, listed in
+   Groq's vision docs when fetched on 2026-10-05 (not verified against the live
+   API; a wrong id fails safe into the manual fallback). Changing it is a code change on purpose.
 4. Confirm the account has no card on file / no spend path. The app has no
    code that can create charges, but Groq's plan is outside the app.
 
@@ -40,7 +41,7 @@ help catch mistakes.
 
 ## On Vercel (not done)
 
-Set the three variables as server environment variables only. Note the limiter
+Set the variables as server environment variables only. Note the limiter
 is per instance and Hobby is non-commercial. For anything public, add a real
 quota (for example an edge-level rate limit) first, and keep the daily budget
 low so exhaustion degrades to the manual mode instead of charging.
@@ -56,6 +57,10 @@ low so exhaustion degrades to the manual mode instead of charging.
 - Any invalid, unknown, foreign-mission, slow, or failed answer becomes a
   fallback, and the child chooses manually.
 - No logging of images, answers, keys, or identifiers.
+
+The per-minute bucket is shared by all visitors (forwarded-for headers are not
+trusted), a retry after a transient 5xx counts against the budget, and fake mode
+is ignored in production unless ALLOW_FAKE_INTERPRETER=1.
 
 ## Not guaranteed
 

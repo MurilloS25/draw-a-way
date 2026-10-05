@@ -151,6 +151,12 @@ p {
 .paper-col {
   grid-area: paper;
   min-width: 0;
+  justify-self: start;
+  /* Keep the whole sheet within the screen height (landscape phones) so the page can still be scrolled. */
+  width: min(100%, max(16rem, calc((100dvh - 9rem) * 10 / 7)));
+}
+.hint {
+  margin: 0;
 }
 .actions {
   grid-area: actions;
@@ -174,7 +180,6 @@ p {
     column-gap: 2rem;
   }
   .paper-col {
-    justify-self: start;
     width: min(100%, calc((100dvh - 15rem) * 10 / 7));
   }
 }
@@ -318,7 +323,7 @@ p {
   cursor: pointer;
   text-align: center;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--marigold-wash);
 }
 .btn.primary {
@@ -326,10 +331,10 @@ p {
   box-shadow: 0 4px 0 var(--ink);
   font-size: 1.2rem;
 }
-.btn.primary:hover:not(:disabled) {
+.btn.primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: #f6c24d;
 }
-.btn.primary:active:not(:disabled) {
+.btn.primary:active:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(3px);
   box-shadow: 0 1px 0 var(--ink);
 }
@@ -345,6 +350,7 @@ p {
   border-color: var(--berry);
   color: var(--berry);
 }
+.btn[aria-disabled="true"],
 .btn:disabled {
   opacity: 1;
   color: var(--ink-soft);

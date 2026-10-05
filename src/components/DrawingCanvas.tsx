@@ -9,6 +9,7 @@ import {
   canAddStroke,
   clamp,
   normalizePoints,
+  pointsLeft,
   type Stroke,
 } from "@/lib/drawing/model";
 import { paintAll, paintStroke } from "@/lib/drawing/render";
@@ -23,6 +24,23 @@ interface Props {
 
 const KEY_STEP = 24;
 const KEY_STEP_BIG = 80;
+
+/** Arrow keys move through a radio group, as native radios do. */
+function radioKeys(count: number, current: number, set: (n: number) => void) {
+  return (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!dir) return;
+    e.preventDefault();
+    const next = (current + dir + count) % count;
+    const group = e.currentTarget.parentElement!;
+    set(next);
+    requestAnimationFrame(() => (group.querySelectorAll("[role=radio]")[next] as HTMLElement | undefined)?.focus());
+  };
+}
+
+function mineAfter(current: Stroke[], r: 1 | 2): number {
+  return current.filter((s) => s.r === r).length - 1;
+}
 
 export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -77,7 +95,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
   const commit = useCallback(
     (raw: number[]) => {
       const { strokes: current, round: r, color: c, width: w } = latest.current;
-      const p = normalizePoints(raw);
+      // Never exceed the total point limit, or the saved session could not be restored.
+      const p = normalizePoints(raw).slice(0, Math.max(0, pointsLeft(current)) * 2);
       if (p.length < 2) return;
       if (!canAddStroke(current)) {
         latest.current.onAnnounce("The page is full. Undo a line to add more.");
@@ -121,7 +140,7 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       }
     };
     const down = (e: PointerEvent) => {
-      if (!e.isPrimary || activeId !== null) return;
+      if (!e.isPrimary || activeId !== null || live.current) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       e.preventDefault();
       activeId = e.pointerId;
@@ -173,7 +192,7 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       if (current[i]!.r === r) {
         setRedo([...stack, current[i]!]);
         latest.current.onChange(current.filter((_, j) => j !== i));
-        latest.current.onAnnounce("Last line removed.");
+        latest.current.onAnnounce(`Last line removed. ${mineAfter(current, r)} left.`);
         return;
       }
     }
@@ -182,7 +201,7 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
   const redoOne = useCallback(() => {
     const { strokes: current, redo: stack } = latest.current;
     const s = stack[stack.length - 1];
-    if (!s || !canAddStroke(current)) return;
+    if (!s || !canAddStroke(current) || s.p.length / 2 > pointsLeft(current)) return;
     setRedo(stack.slice(0, -1));
     latest.current.onChange([...current, s]);
     latest.current.onAnnounce("Line brought back.");
@@ -209,9 +228,9 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       commit(points);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.altKey || e.metaKey) return;
+      if (e.altKey) return;
       if (e.key.startsWith("Arrow") || e.key === " " || e.key === "Enter") setFocused(true);
-      const mod = e.ctrlKey;
+      const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
         undo();
@@ -310,10 +329,11 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
       </div>
       <p id="draw-help" className="help">
         Draw with your finger, pen, or mouse. With a keyboard, click the page or tab to it, then use the arrow keys to
-        move and Space to put the pen down or lift it.
+        move and Space to put the pen down or lift it (Escape also lifts it). Prefer not to draw? Use the
+        button below to choose an idea instead.
       </p>
 
-      <div className="tools" role="toolbar" aria-label="Drawing tools">
+      <div className="tools" role="group" aria-label="Drawing tools">
         <div className="tool-group" role="radiogroup" aria-label="Crayon color">
           {PALETTE.map((p, i) => (
             <button
@@ -321,6 +341,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
               type="button"
               role="radio"
               aria-checked={color === i}
+              tabIndex={color === i ? 0 : -1}
+              onKeyDown={radioKeys(PALETTE.length, color, setColor)}
               aria-label={p.name}
               className="swatch"
               style={{ ["--swatch" as string]: p.hex }}
@@ -335,6 +357,8 @@ export function DrawingCanvas({ strokes, round, onChange, onAnnounce, scene }: P
               type="button"
               role="radio"
               aria-checked={width === i}
+              tabIndex={width === i ? 0 : -1}
+              onKeyDown={radioKeys(WIDTHS.length, width, setWidth)}
               aria-label={w.name}
               className="size"
               onClick={() => setWidth(i)}

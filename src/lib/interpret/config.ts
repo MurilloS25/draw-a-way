@@ -31,7 +31,11 @@ type Env = Record<string, string | undefined>;
 /** Any problem degrades to "manual": the honest, provider-free mode. */
 export function readConfig(env: Env): InterpreterConfig {
   const mode = (env.INTERPRETER_MODE ?? "manual").trim().toLowerCase();
-  if (mode === "fake") return { mode: "fake" };
+  if (mode === "fake") {
+    // A fake "helper" must never appear on a real deployment by accident.
+    const prod = env.NODE_ENV === "production" && env.ALLOW_FAKE_INTERPRETER !== "1";
+    return prod ? { mode: "manual" } : { mode: "fake" };
+  }
   if (mode !== "groq") return { mode: "manual" };
 
   const apiKey = (env.GROQ_API_KEY ?? "").trim();

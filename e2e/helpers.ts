@@ -69,7 +69,7 @@ export async function toConfirm(page: Page) {
 export async function finishMission(page: Page, first: RegExp, second: RegExp) {
   await page.getByRole("radio", { name: first }).check();
   await page.getByRole("button", { name: "That's my idea" }).click();
-  await page.getByRole("button", { name: "Change my solution" }).click();
+  await page.getByRole("button", { name: "Try a change" }).click();
   await drawStroke(page, [
     [0.4, 0.3],
     [0.6, 0.3],

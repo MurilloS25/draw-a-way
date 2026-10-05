@@ -54,7 +54,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
       await expect(page.getByText(text).first()).toBeVisible();
       await expect(page.getByText(/Your drawing is safe/).first()).toBeVisible();
       await expect(page.getByRole("radio")).toHaveCount(4);
-      await page.getByRole("button", { name: "Keep drawing" }).click();
+      await page.getByRole("button", { name: /Keep drawing/ }).click();
       await expect(page.getByTestId("line-count")).toHaveText("1 line on the page.");
       if (name === "rate") await page.waitForTimeout(1300); // let the 1 s cooldown pass
     });
@@ -106,7 +106,7 @@ test.describe("explicit helper with the deterministic fake provider", () => {
     await toConfirm(page);
     await page.getByRole("radio", { name: /A bridge/ }).check();
     await page.getByRole("button", { name: "That's my idea" }).click();
-    await page.getByRole("button", { name: "Change my solution" }).click();
+    await page.getByRole("button", { name: "Try a change" }).click();
     await drawStroke(page, ARC);
     await page.getByRole("button", { name: "I'm done drawing" }).click();
     await page.getByRole("button", { name: "Ask the helper to look" }).click();

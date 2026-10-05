@@ -20,7 +20,7 @@ export default defineConfig({
       command: "npx next start -H 127.0.0.1 -p 3101",
       url: "http://127.0.0.1:3101",
       reuseExistingServer: false,
-      env: { INTERPRETER_MODE: "fake", INTERPRET_PER_MINUTE: "60" },
+      env: { INTERPRETER_MODE: "fake", ALLOW_FAKE_INTERPRETER: "1", INTERPRET_PER_MINUTE: "60" },
     },
   ],
 });

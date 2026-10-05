@@ -66,6 +66,11 @@ export function canAddStroke(strokes: readonly Stroke[]): boolean {
   return strokes.length < LIMITS.maxStrokes && pointCount(strokes) < LIMITS.maxTotalPoints - 2;
 }
 
+/** Points still available before the total limit. */
+export function pointsLeft(strokes: readonly Stroke[]): number {
+  return LIMITS.maxTotalPoints - pointCount(strokes);
+}
+
 /**
  * Round to integers, clamp into the canvas, drop near-duplicate points and cap
  * the length. A single tap becomes a two-point dot so it stays visible.

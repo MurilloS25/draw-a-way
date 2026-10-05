@@ -61,6 +61,12 @@ describe("config", () => {
     expect(ok.groq?.model).toBe("qwen/qwen3.8-27b");
   });
 
+  it("ignores fake mode in production unless explicitly allowed", () => {
+    expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "production" })).toEqual({ mode: "manual" });
+    expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "production", ALLOW_FAKE_INTERPRETER: "1" })).toEqual({ mode: "fake" });
+    expect(readConfig({ INTERPRETER_MODE: "fake", NODE_ENV: "development" })).toEqual({ mode: "fake" });
+  });
+
   it("never reveals the key or model to the browser", () => {
     const caps = publicCapabilities(readConfig({ INTERPRETER_MODE: "groq", GROQ_API_KEY: FAKE_KEY }));
     expect(JSON.stringify(caps)).not.toContain(FAKE_KEY);
@@ -263,6 +269,13 @@ describe("groq adapter (fake fetch only)", () => {
       .mockResolvedValueOnce(new Response("oops", { status: 500 }))
       .mockResolvedValueOnce(reply({ candidateId: "raft", confidence: "low" }));
     await expect(make(g as unknown as FetchLike).interpret(input())).resolves.toMatchObject({ candidateId: "raft" });
+  });
+
+  it("stops retrying when the budget says no", async () => {
+    const f = vi.fn(async () => new Response("oops", { status: 503 }));
+    const g = createGroqInterpreter({ apiKey: FAKE_KEY, model: "qwen/qwen3.8-27b", fetchImpl: f as unknown as FetchLike, allowRetry: () => false });
+    await expect(g.interpret(input())).rejects.toMatchObject({ kind: "unavailable" });
+    expect(f).toHaveBeenCalledTimes(1);
   });
 
   it("times out without retrying", async () => {

@@ -15,7 +15,7 @@ npm start          # http://127.0.0.1:3000, provider-free
 To exercise the helper path with the deterministic fake (no network):
 
 ```bash
-INTERPRETER_MODE=fake npm start
+ALLOW_FAKE_INTERPRETER=1 INTERPRETER_MODE=fake npm start
 ```
 
 Stop the server with Ctrl+C (or stop only the process id you started).
@@ -27,7 +27,7 @@ Stop the server with Ctrl+C (or stop only the process id you started).
 2. **Mission 1, river.** Draw a bridge shape across the water. Press "I'm done
    drawing". Read the confirm text: it says the app cannot see the drawing and
    asks you to choose. Pick "A bridge", press "That's my idea". See the snail
-   cross. Press "Change my solution", add a line, choose "Add a rail to hold",
+   cross. Press "Try a change", add a line, choose "Add a rail to hold",
    and finish at "Your story trail". Check both pictures and the ending text.
 3. **Mission 2, windy hill** and **Mission 3, fog.** Choose them from the
    buttons on the first screen (or "Try another mission" at the end). Complete
@@ -46,7 +46,7 @@ Stop the server with Ctrl+C (or stop only the process id you started).
    browser's storage view and confirm a single key, `drawaway:session:v1`.
 9. **Start over.** Press "Start over", then "Yes, erase and start over". The
    mission restarts and the storage key is gone.
-10. **Fallback.** With `INTERPRETER_MODE=fake`, press "Ask the helper to look"
+10. **Fallback.** With the fake mode, press "Ask the helper to look"
     on the confirm step: a suggestion appears; try both "Yes, that's it" and
     "No, I'll choose". With default mode, no helper button exists and nothing
     is sent (check the network tab: only requests to 127.0.0.1).

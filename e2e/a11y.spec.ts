@@ -24,7 +24,7 @@ async function eachStage(page: Page, check: (label: string) => Promise<void>) {
   await check("confirm+selected");
   await page.getByRole("button", { name: "That's my idea" }).click();
   await check("consequence1");
-  await page.getByRole("button", { name: "Change my solution" }).click();
+  await page.getByRole("button", { name: "Try a change" }).click();
   await check("draw2");
   await page.getByRole("button", { name: "I'm done drawing" }).click();
   await page.getByRole("radio", { name: /Add a rail/ }).check();
@@ -119,6 +119,47 @@ test.describe("accessibility and layout", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Draw your idea" })).toBeFocused();
     await expect(page.getByTestId("announcer")).toContainText("Step 2 of 4");
+  });
+
+  test("landscape phone: the sheet fits the screen height so the page stays scrollable", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    const box = (await page.locator(".paper").boundingBox())!;
+    expect(box.height).toBeLessThan(390);
+    await noHorizontalScroll(page);
+    const done = page.getByRole("button", { name: "I'm done drawing" });
+    await done.scrollIntoViewIfNeeded();
+    await expect(done).toBeInViewport();
+  });
+
+  test("disabled-looking actions explain themselves and stay focusable", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    const done = page.getByRole("button", { name: "I'm done drawing" });
+    await expect(done).toHaveAttribute("aria-disabled", "true");
+    await expect(done).toHaveAccessibleDescription(/Draw a line first/);
+    await done.focus();
+    await expect(done).toBeFocused();
+    await done.click({ force: true }); // Playwright treats aria-disabled as disabled
+    await expect(page.getByRole("heading", { name: "Draw your idea" })).toBeVisible();
+  });
+
+  test("Start over confirmation returns focus and closes with Escape", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start over" }).click();
+    await page.getByRole("button", { name: "Keep going" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Start over" })).toBeFocused();
+  });
+
+  test("crayon radios use arrow keys", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "Start drawing" }).click();
+    await page.getByRole("radio", { name: "Ink blue" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("radio", { name: "Berry red" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Berry red" })).toBeFocused();
   });
 
   test("interactive targets are at least 44px", async ({ page }) => {

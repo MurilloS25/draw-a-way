@@ -44,7 +44,7 @@ test.describe("provider-free flow (production build)", () => {
     await page.keyboard.press("Space");
     await page.getByRole("button", { name: "That's my idea" }).press("Enter");
     await expect(page.getByText(/Mossy climbs aboard your boat/)).toBeVisible();
-    await page.getByRole("button", { name: "Change my solution" }).press("Enter");
+    await page.getByRole("button", { name: "Try a change" }).press("Enter");
     await page.getByRole("button", { name: "Choose an idea without drawing" }).press("Enter");
     await page.getByRole("radio", { name: /Keep my boat/ }).focus();
     await page.keyboard.press("Space");

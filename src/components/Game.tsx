@@ -99,6 +99,7 @@ export function Game() {
     setSelected(null);
     setHelper({ status: "idle" });
     abortRef.current?.abort();
+    abortRef.current = null;
     if (lastKey.current === null) {
       lastKey.current = key;
       return;
@@ -111,6 +112,14 @@ export function Game() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Keep keyboard focus somewhere sensible when the reset confirmation closes.
+  const resetBtn = useRef<HTMLButtonElement>(null);
+  const wasConfirming = useRef(false);
+  useEffect(() => {
+    if (wasConfirming.current && !confirmingReset) resetBtn.current?.focus();
+    wasConfirming.current = confirmingReset;
+  }, [confirmingReset]);
+
   const setStrokes = useCallback((strokes: Stroke[]) => dispatch({ type: "setStrokes", strokes }), []);
 
   const askHelper = async () => {
@@ -119,22 +128,29 @@ export function Game() {
     abortRef.current = controller;
     setHelper({ status: "loading" });
     setAnnouncement("The helper is looking at your drawing.");
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 15000);
     const result = await requestInterpretation(
       { missionId: state.missionId, round: state.round, firstIdeaId: state.ideaId, strokes: state.strokes },
       controller.signal,
     );
     clearTimeout(timeout);
-    if (controller.signal.aborted && abortRef.current !== controller) return;
-    if (abortRef.current !== controller) return;
+    // Ignore the answer if the child cancelled, moved on, or started over meanwhile.
+    if (abortRef.current !== controller || (controller.signal.aborted && !timedOut)) return;
+    abortRef.current = null;
     const valid = result.status === "ok" && currentCandidates(state).some((c) => c.id === result.candidateId);
     if (result.status === "ok" && valid) {
       setHelper({ status: "suggested", candidateId: result.candidateId });
       setAnnouncement("The helper has a guess. Please check it.");
+      requestAnimationFrame(() => headingRef.current?.focus());
     } else {
       const reason: FallbackReason = result.status === "fallback" ? result.reason : "invalid_response";
-      setHelper({ status: "failed", reason: controller.signal.aborted ? "timeout" : reason });
+      setHelper({ status: "failed", reason: timedOut ? "timeout" : reason });
       setAnnouncement("The helper could not tell. Your drawing is safe. You can tell us what you made.");
+      requestAnimationFrame(() => headingRef.current?.focus());
     }
   };
 
@@ -147,6 +163,7 @@ export function Game() {
 
   const startOver = () => {
     abortRef.current?.abort();
+    abortRef.current = null;
     clearAllLocalData();
     dispatch({ type: "reset" });
     setConfirmingReset(false);
@@ -164,6 +181,7 @@ export function Game() {
     helper.status === "suggested" ? candidates.find((c) => c.id === helper.candidateId) : undefined;
 
   const showSummary = state.phase === "summary";
+  const needsLine = state.round === 1 && state.strokes.length === 0;
   const confirmHeading = state.round === 1 ? "What did you make?" : "What did you change?";
 
   return (
@@ -178,15 +196,25 @@ export function Game() {
         <div className="reset">
           {confirmingReset ? (
             <>
-              <button type="button" className="btn small danger" onClick={startOver}>
+              <button
+                type="button"
+                className="btn small danger"
+                onClick={startOver}
+                onKeyDown={(e) => e.key === "Escape" && setConfirmingReset(false)}
+              >
                 Yes, erase and start over
               </button>
-              <button type="button" className="btn small" onClick={() => setConfirmingReset(false)}>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setConfirmingReset(false)}
+                onKeyDown={(e) => e.key === "Escape" && setConfirmingReset(false)}
+              >
                 Keep going
               </button>
             </>
           ) : (
-            <button type="button" className="btn small quiet" onClick={() => setConfirmingReset(true)}>
+            <button ref={resetBtn} type="button" className="btn small quiet" onClick={() => setConfirmingReset(true)}>
               Start over
             </button>
           )}
@@ -243,7 +271,7 @@ export function Game() {
                 <p className="story">
                   {state.skippedDrawing
                     ? "Pick the idea you want to try."
-                    : "We cannot see your drawing yet, so you tell us. Pick the idea that is closest to yours."}
+                    : "Nothing here looks at your drawing, so you tell us. Pick the idea that is closest to yours. If none fits, keep drawing."}
                 </p>
               )}
 
@@ -279,12 +307,13 @@ export function Game() {
                     </>
                   ) : (
                     <>
-                      <button type="button" className="btn small" onClick={askHelper}>
+                      <p className="fine" id="helper-note">
+                        This sends a small black-and-white copy of your lines to an online helper. We do not keep it,
+                        and the helper service may keep it for a short time.
+                      </p>
+                      <button type="button" className="btn small" onClick={askHelper} aria-describedby="helper-note">
                         Ask the helper to look
                       </button>
-                      <p className="fine">
-                        This sends a small black-and-white copy of your lines to an online helper. It is not saved.
-                      </p>
                       {helper.status === "failed" && (
                         <p className="fine alert" role="status">
                           {FAILURE_COPY[helper.reason]} Your drawing is safe. Tell us what you made instead.
@@ -372,11 +401,17 @@ export function Game() {
               <button
                 type="button"
                 className="btn primary"
-                disabled={state.round === 1 && state.strokes.length === 0}
-                onClick={() => dispatch({ type: "finishDrawing" })}
+                aria-disabled={needsLine}
+                aria-describedby={needsLine ? "action-hint" : undefined}
+                onClick={() => !needsLine && dispatch({ type: "finishDrawing" })}
               >
                 I&apos;m done drawing
               </button>
+              {needsLine && (
+                <p className="fine hint" id="action-hint">
+                  Draw a line first, or choose an idea without drawing.
+                </p>
+              )}
               <button type="button" className="btn" onClick={() => dispatch({ type: "chooseWithoutDrawing" })}>
                 Choose an idea without drawing
               </button>
@@ -402,13 +437,19 @@ export function Game() {
                   <button
                     type="button"
                     className="btn primary"
-                    disabled={!selected}
+                    aria-disabled={!selected}
+                    aria-describedby={!selected ? "action-hint" : undefined}
                     onClick={() => selected && dispatch({ type: "confirm", candidateId: selected })}
                   >
                     That&apos;s my idea
                   </button>
+                  {!selected && (
+                    <p className="fine hint" id="action-hint">
+                      Pick one idea first.
+                    </p>
+                  )}
                   <button type="button" className="btn" onClick={() => dispatch({ type: "backToDrawing" })}>
-                    {state.skippedDrawing ? "Draw instead" : "Keep drawing"}
+                    {state.skippedDrawing ? "Draw instead" : "None fit. Keep drawing"}
                   </button>
                 </>
               )}
@@ -416,7 +457,7 @@ export function Game() {
           )}
           {state.phase === "consequence" && state.round === 1 && (
             <button type="button" className="btn primary" onClick={() => dispatch({ type: "revise" })}>
-              Change my solution
+              Try a change
             </button>
           )}
           {state.phase === "consequence" && state.round === 2 && (

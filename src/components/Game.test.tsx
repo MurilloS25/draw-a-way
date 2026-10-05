@@ -62,17 +62,17 @@ describe("Game flow", () => {
     render(<Game />);
     const user = await startDrawing();
 
-    expect(screen.getByRole("button", { name: "I'm done drawing" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "I'm done drawing" })).toHaveAttribute("aria-disabled", "true");
     await user.click(screen.getByRole("button", { name: "Choose an idea without drawing" }));
 
     expect(screen.getByRole("heading", { name: "What did you make?" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "That's my idea" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "That's my idea" })).toHaveAttribute("aria-disabled", "true");
     await user.click(screen.getByRole("radio", { name: /A bridge/ }));
     await user.click(screen.getByRole("button", { name: "That's my idea" }));
 
     expect(screen.getByRole("heading", { name: "Your idea: a bridge" })).toBeInTheDocument();
     expect(screen.getByText(/Mossy slides onto your bridge/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Change my solution" }));
+    await user.click(screen.getByRole("button", { name: "Try a change" }));
 
     await user.click(screen.getByRole("button", { name: "I'm done drawing" }));
     expect(screen.getByRole("heading", { name: "What did you change?" })).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("Game flow", () => {
     const user = await startDrawing();
     await drawWithKeyboard(user);
     expect(screen.getByTestId("line-count")).toHaveTextContent("1 line on the page.");
-    expect(screen.getByRole("button", { name: "I'm done drawing" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "I'm done drawing" })).not.toHaveAttribute("aria-disabled", "true");
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(screen.getByTestId("line-count")).toHaveTextContent("Nothing drawn yet.");
@@ -185,7 +185,7 @@ describe("explicit helper (fake provider)", () => {
     const user = await startDrawing();
     await toConfirm(user);
     expect(screen.queryByRole("button", { name: /helper/i })).toBeNull();
-    expect(screen.getByText(/We cannot see your drawing yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing here looks at your drawing/)).toBeInTheDocument();
   });
 
   it("asks only on request, shows a suggestion, and only a confirmation advances the story", async () => {
@@ -224,11 +224,27 @@ describe("explicit helper (fake provider)", () => {
       await user.click(await screen.findByRole("button", { name: "Ask the helper to look" }));
       expect((await screen.findAllByText(/Your drawing is safe/)).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("radio")).toHaveLength(4);
-      await user.click(screen.getByRole("button", { name: "Keep drawing" }));
+      await user.click(screen.getByRole("button", { name: /Keep drawing/ }));
       expect(screen.getByTestId("line-count")).toHaveTextContent("1 line");
       view.unmount();
       localStorage.clear();
     }
+  });
+
+  it("ignores a late helper answer after the child went back to drawing", async () => {
+    let release: (r: Response) => void = () => {};
+    mockFetch(remote(() => new Promise<Response>((res) => (release = res))));
+    render(<Game />);
+    const user = await startDrawing();
+    await toConfirm(user);
+    await user.click(await screen.findByRole("button", { name: "Ask the helper to look" }));
+    await user.click(screen.getByRole("button", { name: /Keep drawing/ }));
+    await act(async () => {
+      release(Response.json({ status: "ok", candidateId: "raft", confidence: "high", source: "fake" }));
+    });
+    expect(screen.getByRole("heading", { name: "Draw your idea" })).toBeInTheDocument();
+    expect(screen.queryByText(/I think you made/)).toBeNull();
+    expect(screen.getByTestId("announcer")).not.toHaveTextContent(/helper/i);
   });
 
   it("can cancel a slow helper request", async () => {

@@ -29,11 +29,15 @@ const fallback = (reason: FallbackReason): ServiceResult => ({
   body: { status: "fallback", reason },
 });
 
-function buildInterpreter(deps: ServiceDeps, scenarioHeader: string | null): Interpreter | null {
+function buildInterpreter(deps: ServiceDeps, scenarioHeader: string | null, clientHint: string): Interpreter | null {
   const { config } = deps;
   if (config.mode === "fake") return createFakeInterpreter(parseScenario(scenarioHeader));
   if (config.mode === "groq" && config.groq) {
-    return createGroqInterpreter({ ...config.groq, fetchImpl: deps.fetchImpl });
+    return createGroqInterpreter({
+      ...config.groq,
+      fetchImpl: deps.fetchImpl,
+      allowRetry: () => deps.limiter.check(clientHint).ok,
+    });
   }
   return null;
 }
@@ -55,7 +59,7 @@ export async function interpret(
   if (!checked.ok) {
     return { status: checked.status, body: { error: checked.status === 413 ? "too_large" : "bad_request" } };
   }
-  const interpreter = buildInterpreter(deps, input.scenario);
+  const interpreter = buildInterpreter(deps, input.scenario, input.clientHint);
   if (!interpreter) return fallback("disabled");
 
   const { missionId, round, firstIdeaId, imageBase64 } = checked.value;

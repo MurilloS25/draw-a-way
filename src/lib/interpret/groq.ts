@@ -65,6 +65,8 @@ export function createGroqInterpreter(options: {
   fetchImpl: FetchLike;
   timeoutMs?: number;
   maxRetries?: number;
+  /** Called before a retry; return false to stop (used to count retries against the budget). */
+  allowRetry?: () => boolean;
 }): Interpreter {
   const timeoutMs = options.timeoutMs ?? INTERPRET_LIMITS.timeoutMs;
   const maxRetries = options.maxRetries ?? INTERPRET_LIMITS.maxRetries;
@@ -120,6 +122,7 @@ export function createGroqInterpreter(options: {
     async interpret(input) {
       let lastError: InterpretError | undefined;
       for (let i = 0; i <= maxRetries; i++) {
+        if (i > 0 && options.allowRetry && !options.allowRetry()) break;
         try {
           return await attempt(input);
         } catch (error) {
