@@ -13,8 +13,9 @@ Included and explicitly excluded work.
 Ordered implementation slices and affected boundaries.
 
 ## Verification
-Commands, deterministic fixtures, safety and narrative cases, accessibility
-evidence, performance budgets, provider-free behavior, and failure cases.
+Commands, synthetic file fixtures, malformed and adversarial cases, format
+coverage, parser and transformation evidence, resource budgets, cancellation,
+output integrity, privacy, accessibility, and failure cases.
 
 ## Decisions or follow-ups
 Durable decisions to record and intentionally deferred work.

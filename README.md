@@ -1,19 +1,20 @@
-# Draw a Way
+# Before You Share
 
-Draw a solution. See what it changes. Try again.
+See what a file may reveal before you send it.
 
-Draw a Way is a guided creative experience in which a child responds to a
-small story problem with a drawing. The application interprets the idea,
-asks the child to confirm or correct that interpretation, and then reveals a
-consequence that invites another thoughtful change.
+Before You Share is an experimental, privacy-first browser tool for inspecting
+hidden or easily overlooked information in files. It is intended to help
+people understand that a photograph, PDF, or document may disclose more than
+the content visible on screen.
 
-It is not a drawing contest, an open chatbot, or a generator that replaces a
-child's artwork. The child's idea remains the center of the experience.
+The planned experience runs locally in the browser. Files are not uploaded,
+accounts are not required, and analysis does not depend on a remote service.
 
 ## Status
 
-The product is in foundation planning. No application, model, provider, user
-data store, or deployment has been selected or implemented yet.
+Foundation ready; implementation has not started. Supported formats, parsing
+libraries, browser APIs, sanitization behavior, and deployment have not yet
+been selected or implemented.
 
 ## Start here
 
@@ -23,31 +24,44 @@ data store, or deployment has been selected or implemented yet.
 
 ## Product principles
 
-- Start immediately with a clear mission; do not require onboarding, an
-  account, a name, or personal information.
-- Let the child confirm or correct the application's interpretation before
-  the story moves forward.
-- Never score artistic quality or replace the original drawing with a more
-  polished generated image.
-- Prefer short, bounded sessions without public feeds, streaks, advertising,
-  or manipulative engagement loops.
-- Keep drawings and progress on the device wherever practical.
-- Design for touch, mouse, stylus, keyboard, reduced motion, zoom, and clear
-  non-visual instructions.
-- Keep the essential experience usable when optional AI is unavailable.
-- Require zero monetary cost and avoid services that can charge
-  automatically.
+- Process files locally by default and make any network boundary impossible to
+  miss.
+- Never modify the original file. Any sanitized result is a separate copy.
+- Explain each finding in plain language: what it is, where it came from, why
+  it may matter, and how confident the tool is.
+- Distinguish verified metadata from heuristics and unsupported file content.
+- Keep analysis useful without an account, database, AI provider, or backend.
+- Treat every file and parser result as untrusted input.
+- Bound file size, memory, CPU time, decompression, recursion, and previews.
+- Make privacy education more important than alarmist scoring.
+- Require zero monetary cost and avoid services that can charge automatically.
+
+## Experimental limitations
+
+Before You Share is not a guarantee that a file is anonymous, safe, clean, or
+free of hidden information. Parsers can miss data, file formats evolve, and a
+copy produced by a browser tool may lose features or fail to open correctly.
+
+The application must therefore:
+
+- preserve the original untouched;
+- label every generated file as a new experimental copy;
+- state exactly what was removed or rebuilt;
+- recommend opening and checking the copy before sharing it;
+- never encourage deletion of the original;
+- avoid claiming to replace professional forensic, legal, compliance, or
+  security review.
 
 ## Deliberately excluded from the first release
 
-- Accounts, profiles, real names, location, photographs, or camera access.
-- Open-ended chat, public galleries, social sharing, or communication between
-  users.
-- Advertising, purchases, subscriptions, streaks, or rankings.
-- Aesthetic grading, personality assessment, or claims about a child's
-  ability, emotions, or development.
-- Unbounded model input or output and provider-dependent core functionality.
+- Cloud uploads or remote file storage.
+- Accounts, profiles, analytics, advertising, or tracking.
+- Malware detection or claims that a file is safe to execute.
+- Password recovery, encryption bypass, or examination of files without the
+  owner's authorization.
+- Silent modification, in-place rewriting, or automatic sharing.
+- Support for every file format before a smaller set is tested thoroughly.
 
-The exact age range, mission design, local-versus-remote inference boundary,
-fallback behavior, technology stack, and release scope must be settled in a
-reviewed implementation plan before development begins.
+The first reviewed plan must choose a narrow format set and define evidence,
+resource, privacy, accessibility, and round-trip integrity requirements before
+implementation begins.

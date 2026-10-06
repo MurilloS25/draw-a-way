@@ -2,9 +2,9 @@
 
 Record decisions that constrain future work or are expensive to reverse. Routine implementation choices do not need an ADR.
 
-For Draw a Way, record choices that alter child agency, privacy, storage,
-content safety, interpretation, provider boundaries, accessibility, cost, or
-the essential fallback experience.
+For Before You Share, record choices that alter format coverage, parser trust,
+file retention, preview isolation, transformation behavior, output integrity,
+privacy, accessibility, resource budgets, or deployment boundaries.
 
 ```markdown
 # Decision title

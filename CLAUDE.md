@@ -1,6 +1,5 @@
 @AGENTS.md
 
-Use `docs/ARCHITECTURE.md` for product and trust boundaries and
-`docs/HARNESS.md` for the working loop. Preserve the child's authorship,
-privacy, ability to correct the system, and access to a useful provider-free
-fallback.
+Use `docs/ARCHITECTURE.md` for file, trust, and privacy boundaries and
+`docs/HARNESS.md` for the working loop. Preserve the original, keep processing
+local, distinguish evidence from inference, and never overstate sanitization.

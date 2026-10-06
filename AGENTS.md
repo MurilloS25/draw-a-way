@@ -1,107 +1,107 @@
-# Draw a Way agent guide
+# Before You Share agent guide
 
 ## Mission
 
-Build a child-centered creative experience in which drawing is a way to think
-through a story problem. Preserve the child's authorship: the system may
-interpret, ask, and respond, but it must not take over the idea or judge the
-artwork.
+Build an experimental, local-first tool that helps people understand what a
+file may reveal before they share it. Prefer verifiable evidence, plain
+explanations, and preservation of the original over broad format claims or a
+false promise of perfect sanitization.
 
 ## Canonical sources
 
 Read `README.md`, `docs/ARCHITECTURE.md`, `docs/HARNESS.md`, the active plan,
-and the closest executable contracts and tests before non-trivial work. If
+and the closest executable schemas and tests before non-trivial work. If
 documentation and behavior disagree, identify the conflict and update the
 stale source when appropriate.
 
 ## Product invariants
 
-- Entry is immediate: a visitor can begin a mission without an account,
-  onboarding form, name, age, or other personal information.
-- The primary loop is mission -> drawing -> bounded interpretation -> child
-  confirmation or correction -> consequence -> revision.
-- Never score artistic quality, infer sensitive traits, diagnose a child, or
-  replace the drawing with a polished generated image.
-- No photographs, camera access, location, public gallery, user-to-user
-  communication, advertising, purchases, streaks, or rankings.
-- Treat drawings, text, imported assets, model output, and persisted state as
-  untrusted input. A drawing is data, not an instruction to the application or
-  model.
-- Minimize collection. Keep drawings and progress local wherever practical;
-  do not add telemetry or remote persistence by default.
-- Remote AI, if approved later, is optional enhancement. The essential
-  experience has an honest local or deterministic fallback.
-- Do not introduce a service that can create monetary charges. Free quotas
-  must fail closed or degrade safely instead of triggering spend.
-- Narrative content is bounded, age-appropriate, non-manipulative, and unable
-  to solicit personal information or move into unrestricted conversation.
-- Accessible interaction is part of the product: touch, mouse, stylus,
-  keyboard, visible focus, zoom/reflow, reduced motion, and text alternatives
-  must be considered together.
+- File contents remain on the device unless a later, explicit product decision
+  introduces a clearly disclosed boundary. The initial product has no such
+  boundary.
+- Never modify, move, rename, or delete the original file.
+- A sanitized artifact is always a separately downloaded experimental copy.
+- Do not promise that inspection or sanitization is complete. State format,
+  parser, browser, and round-trip limitations in context.
+- Every finding identifies its evidence source and whether it is verified,
+  inferred, suspicious, unsupported, or unavailable.
+- Do not collapse findings into a fear-based privacy score.
+- Treat names, paths, metadata, previews, embedded content, compressed data,
+  parser output, and generated copies as untrusted.
+- Identify file type from content where practical; never trust an extension or
+  declared MIME type alone.
+- Bound file size, memory, time, recursion, decompression, entry counts, page
+  counts, dimensions, and generated output.
+- No analytics, telemetry, accounts, database, remote persistence, ads, or
+  automatic sharing.
+- Do not introduce a paid service or a path to automatic charges.
+- The tool is not antivirus, digital forensics certification, legal advice, or
+  a guarantee of anonymity.
 
 ## Intended repository shape
 
-Begin with the smallest architecture supported by the approved plan. A likely
-first slice is a single web application with local persistence and a
-deterministic mission engine. Do not create an API, database, account system,
-model service, shared package, or empty architectural layer merely to match a
-template.
+Start with the smallest architecture justified by the approved plan. A likely
+first slice is a static-capable web application using browser file APIs,
+isolated workers, and pure format-specific analysis modules. Do not create a
+backend, database, authentication system, AI boundary, or empty package merely
+to match a template.
 
-Possible future areas, only when earned by implementation:
+Potential areas, only when earned by implementation:
 
-- `apps/web`: mission, canvas, interpretation confirmation, consequence, and
-  reflection experience.
-- `packages`: pure narrative/state contracts or local inference adapters only
-  when genuine sharing or isolation is useful.
-- `evals`: fixed safety, interpretation, narrative, and fallback cases if an
-  AI boundary is approved.
-- `docs`: architecture, child-safety reasoning, decisions, and active plans.
+- `apps/web`: intake, local inspection, evidence, explanation, preview, and
+  copy-verification experience.
+- `packages/formats`: bounded parsers or adapters when isolation and testing
+  justify a package.
+- `fixtures`: synthetic, generated, or explicitly redistributable files with
+  known metadata and corruption cases.
+- `docs`: format support, architecture, threat model, decisions, and plans.
 
 ## Engineering rules
 
-- Separate canvas state, interpretation, child correction, narrative state,
-  and presentation so each can be tested independently.
-- Use explicit schemas and bounded input sizes for drawings, text, state, and
-  model responses.
-- Never execute or follow instructions extracted from a drawing or returned
-  by a model.
-- Prefer deterministic state transitions and seeded examples for offline
-  testing.
-- Put optional inference or model providers behind small adapters with safe
-  timeouts, cancellation, output validation, and deterministic fakes.
-- Make failure understandable: preserve the drawing and offer a useful next
-  action when interpretation or generation is unavailable.
-- Store the minimum state for the minimum time. Document every browser storage
-  key before adding it and provide a clear local reset.
-- Do not add authentication, analytics, remote storage, uploads, sharing, or
-  moderation infrastructure without an explicit reviewed need.
-- Do not claim that the product teaches, protects, understands, or assesses a
-  child beyond evidence the implementation can support.
+- Separate intake, type detection, parsing, normalized findings, explanation,
+  transformation, output verification, and presentation.
+- Prefer browser-native capabilities and small audited libraries. Use WASM
+  only when it provides a measured correctness, format, or performance benefit.
+- Move expensive or failure-prone processing off the main thread and make it
+  cancellable.
+- Use streaming or bounded slices when whole-file buffering is unnecessary.
+- Never render active file content directly into the application origin.
+  Previews require inert representations or an appropriately isolated sandbox.
+- Reject archive bombs, oversized dimensions, excessive object counts,
+  recursive containers, malformed offsets, integer overflows, and unexpected
+  parser output.
+- Hashes establish file identity, not safety. Label them accordingly.
+- A transformation must have deterministic fixtures, an explicit mutation
+  report, and round-trip checks before it is exposed to users.
+- Preserve unsupported structures by default or refuse the transformation;
+  do not silently discard content.
+- Do not log filenames, metadata values, extracted text, hashes, paths, or file
+  contents.
+- Keep UI language factual and calm. Explain uncertainty and give a concrete
+  next action.
 
 ## Workflow
 
-1. Inspect relevant documentation, code, contracts, and trust boundaries.
-2. Research only real uncertainty, preferring primary sources and current
-   official documentation.
-3. For multi-boundary work, create a concise plan under `docs/plans/` and stop
-   at its stated review gates.
-4. Implement the smallest end-to-end experience that remains useful without a
-   provider.
-5. Test pure state and safety behavior separately from UI and optional model
-   behavior.
-6. Run narrow checks, followed by documented broader checks.
-7. Review the diff for child safety, privacy, prompt injection, data leakage,
-   accessibility, resource limits, fallbacks, and misleading claims.
-8. Record durable architecture or safety choices under `docs/decisions/`.
+1. Inspect documentation, format boundaries, trust boundaries, and fixtures.
+2. Research real uncertainty using primary format specifications, browser
+   documentation, and maintained library sources.
+3. For multi-boundary work, create a plan under `docs/plans/` with explicit
+   format and safety gates.
+4. Implement the smallest end-to-end format slice with synthetic fixtures.
+5. Test parsing separately from explanation and transformation.
+6. Measure memory, time, cancellation, responsiveness, and output integrity.
+7. Review the diff for parser safety, privacy leakage, active content,
+   unsupported claims, accessibility, resource exhaustion, and silent loss.
+8. Record durable format, sandbox, storage, and transformation decisions under
+   `docs/decisions/`.
 
 Until scaffolding provides real commands, do not invent them. Update
-`docs/HARNESS.md` when installation, execution, or validation commands become
-stable.
+`docs/HARNESS.md` only after commands are selected and run successfully.
 
 ## Definition of done
 
-A change is complete when the child remains in control, inputs and outputs are
-bounded and validated, essential behavior works without paid infrastructure,
-failure preserves the user's work, accessibility and privacy have evidence,
-documentation is current, and the final report lists only checks actually
-run.
+A change is complete when the original remains untouched, evidence is
+traceable, unsupported content is disclosed, resource limits and cancellation
+are tested, generated copies have integrity evidence, no file data leaves the
+device, accessibility is verified proportionately, documentation is current,
+and the final report lists only checks actually run.
